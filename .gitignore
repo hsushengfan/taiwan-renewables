@@ -1,0 +1,8 @@
+# 本機執行時的紀錄檔，不需要上傳
+data/collect.log
+data/launchd.*
+data/raw/**/*.tmp
+
+# Python 和 macOS 自動產生的檔案
+__pycache__/
+.DS_Store

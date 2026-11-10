@@ -1,0 +1,43 @@
+# GitHub Actions 排程：在 GitHub 的雲端電腦上定時執行 collect.py，
+# 有新資料就自動 commit 回這個 repo。你的電腦關機也照樣會跑。
+
+name: 收集台電發電資料
+
+on:
+  schedule:
+    # 每 5 分鐘一次（GitHub 允許的最短間隔）。時間是 UTC，不過每 5 分鐘跑一次就跟時區無關。
+    # 注意：GitHub 不保證準時，忙的時候可能延遲或跳過幾次。
+    - cron: "*/5 * * * *"
+  workflow_dispatch: # 讓你可以在 GitHub 網頁上按按鈕手動執行
+
+permissions:
+  contents: write # 允許這個排程把新資料 commit 回 repo
+
+# 同一時間只跑一個，避免兩次同時 push 互相衝突
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 下載 repo 內容
+        uses: actions/checkout@v4
+
+      - name: 抓資料
+        run: python3 collect.py
+
+      - name: 有新檔案就 commit 並 push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/raw
+          if git diff --cached --quiet; then
+            echo "沒有新資料，不用 commit"
+            exit 0
+          fi
+          git commit -m "data: $(ls -t data/raw/*/*.json.gz | head -1)"
+          git pull --rebase
+          git push
