@@ -3,6 +3,9 @@ data/collect.log
 data/launchd.*
 data/raw/**/*.tmp
 
+# clean_data.py 產生的 CSV，隨時可以從原始資料重新產生
+data/clean/
+
 # Python 和 macOS 自動產生的檔案
 __pycache__/
 .DS_Store
