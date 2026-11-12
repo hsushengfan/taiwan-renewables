@@ -13,6 +13,7 @@
 | `supabase/functions/collect/index.ts` | Edge Function：抓台電資料（步驟 3） |
 | `supabase/import_raw.sql` | 舊資料匯入檔（步驟 5） |
 | `supabase/migrations/002_schedule.sql` | pg_cron 排程（步驟 5.5） |
+| `supabase/migrations/003_daily_stats.sql` | 每日彙總表（步驟 5.6） |
 | `supabase/make_import_sql.py` | 重新產生 `import_raw.sql` 的程式 |
 | `backup_collect.py` + `.github/workflows/collect.yml` | GitHub Actions 的備援收集＋警報（步驟 6） |
 
@@ -115,6 +116,29 @@ select start_time, status, return_message from cron.job_run_details order by sta
 -- 呼叫 Edge Function 的結果（401 = 金鑰不對）
 select created, status_code, content from net._http_response order by created desc limit 5;
 ```
+
+## 步驟 5.6：每日彙總表
+
+1. 打開 `supabase/migrations/003_daily_stats.sql`，複製全部內容，
+   貼到 SQL Editor（**下拉選單選 Database**），按 **Run**。
+2. 執行下面的查詢，看再生能源機組的每日數字：
+   ```sql
+   select d.day, u.type, u.name,
+          round(d.generation_kwh)                as 發電量_度,
+          round((d.availability * 100)::numeric, 1)    as availability_pct,
+          round((d.capacity_factor * 100)::numeric, 1) as 容量因數_pct,
+          d.capacity_mw,
+          d.intervals_present                    as 時間點數,
+          round((d.completeness * 100)::numeric) as 完整度_pct,
+          d.flagged_remarks
+   from daily_unit_stats d
+   join units u on u.id = d.unit_id
+   where u.is_renewable
+   order by d.day desc, u.type, u.name;
+   ```
+
+之後每小時的第 20 分會自動重算「今天」和「昨天」，不用手動執行。
+要手動重算某一天：`select refresh_daily_stats('2026-11-12');`
 
 ---
 
