@@ -29,6 +29,8 @@ from clean_data import CLEAN_DIR, PROJECT, load_range, warn
 
 # ---------------------------------------------------------------
 # 備註的分類規則。之後出現新的備註，就加到這裡。
+# 資料庫裡也有一份一樣的規則（supabase/migrations/001_schema.sql 的 remark_rules），
+# 兩邊要一起改；tests/test_rules_match.py 會檢查兩邊是否一致。
 # ---------------------------------------------------------------
 NORMAL = "正常"
 VOLUNTARY = "主動少發"        # 選擇不發，不影響 availability
@@ -46,12 +48,14 @@ REMARK_RULES = {
     "部分歲修": PARTIAL_OUTAGE,
     "部分故障": PARTIAL_OUTAGE,
     "運轉限制": PARTIAL_OUTAGE,
+    "環保限制": PARTIAL_OUTAGE,
     "檢修": FULL_OUTAGE,
     "歲修": FULL_OUTAGE,
     "故障": FULL_OUTAGE,
     "通訊異常": UNKNOWN_STATUS,
     "新機組試俥": TESTING,
     "新增設備測試運轉": TESTING,
+    "測試運轉": TESTING,
 }
 
 # 這幾類的 availability 一律是 100%（不管實際發多少）
