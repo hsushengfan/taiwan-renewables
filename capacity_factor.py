@@ -1,23 +1,19 @@
 """
-計算機組的 availability（可用率）和容量因數。
+計算機組的容量因數，並把台電的「備註」分類成狀態。
 
-計算方法和假設的完整說明在 docs/methodology.md。網站呈現數字時，要一起附上那份說明。
+計算方法和假設的完整說明在 docs/methodology.md。
 
-兩個指標（都是「每 10 分鐘」先各算一次）：
-  - availability ＝ 這段時間「能發」的電 ÷ 裝置容量
-  - 容量因數     ＝ 這段時間「實際發」的電 ÷ 裝置容量
+  - 容量因數 ＝ 實際發電量 ÷ 裝置容量（每 10 分鐘各算一次，再取平均）
+  - 狀態     ＝ 把台電的備註分成幾類（正常、主動少發、部分停機、停機…），
+               網站用它畫「狀態色帶」
 
-台電只告訴我們「實際發了多少」，所以「能發多少」要靠「備註」來判斷：
-  - 空白（正常）              → 能發 = 裝置容量，availability 100%
-  - 主動少發（配合綠電先行…） → 是「選擇不發」，availability 100%
-  - 檢修、故障、運轉限制…     → 是「發不出來」，能發 = 實際發電量
-  - 沒看過的備註              → 保守當作「發不出來」，並印出警告
-
-日、月、年的平均：把這段期間每 10 分鐘的值平均起來。
+為什麼不算 availability（可用率）？
+台電只提供「裝置容量」和「實際發電量」，沒有提供「實際可用的容量」，
+所以真正的 availability 算不出來。詳見 docs/methodology.md。
 
 使用方式：
-    python3 availability.py 2026-11-10              # 算一天
-    python3 availability.py 2026-11-01 2026-11-30   # 算一段日期
+    python3 capacity_factor.py 2026-11-10              # 算一天
+    python3 capacity_factor.py 2026-11-01 2026-11-30   # 算一段日期
 """
 
 import csv
@@ -33,12 +29,12 @@ from clean_data import CLEAN_DIR, PROJECT, load_range, warn
 # 兩邊要一起改；tests/test_rules_match.py 會檢查兩邊是否一致。
 # ---------------------------------------------------------------
 NORMAL = "正常"
-VOLUNTARY = "主動少發"        # 選擇不發，不影響 availability
-PARTIAL_OUTAGE = "部分停機"   # 發不出來（部分）
-FULL_OUTAGE = "停機"          # 發不出來（全部）
-UNKNOWN_STATUS = "狀態不明"   # 這個時間點不算
-TESTING = "試運轉"            # 還沒正式商轉，這個時間點不算
-UNKNOWN_REMARK = "未知備註"   # 規則表裡沒有的備註，保守當作發不出來
+VOLUNTARY = "主動少發"        # 調度要求降低出力，設備本身可以發電
+PARTIAL_OUTAGE = "部分停機"
+FULL_OUTAGE = "停機"
+UNKNOWN_STATUS = "狀態不明"   # 通訊異常，發電量數字不可靠
+TESTING = "試運轉"            # 還沒正式商轉
+UNKNOWN_REMARK = "未知備註"   # 規則表裡沒有的備註
 
 REMARK_RULES = {
     "": NORMAL,
@@ -58,10 +54,8 @@ REMARK_RULES = {
     "測試運轉": TESTING,
 }
 
-# 這幾類的 availability 一律是 100%（不管實際發多少）
-FULLY_AVAILABLE = {NORMAL, VOLUNTARY}
-# 這幾類用「實際發電量 ÷ 容量」當作 availability
-OUTPUT_LIMITED = {PARTIAL_OUTAGE, FULL_OUTAGE, UNKNOWN_REMARK}
+# 這幾類的時間點不列入容量因數的計算
+EXCLUDED = {UNKNOWN_STATUS, TESTING}
 # 這幾類要在網站上特別標註
 FLAGGED = {PARTIAL_OUTAGE, FULL_OUTAGE, UNKNOWN_REMARK}
 
@@ -71,7 +65,7 @@ INTERVALS_PER_DAY = 144  # 台電每 10 分鐘一筆，一天 144 筆
 def classify(remark):
     status = REMARK_RULES.get(remark)
     if status is None:
-        warn(f"沒看過的備註 {remark!r}，先保守當作「發不出來」。請把它加進 REMARK_RULES")
+        warn(f"沒看過的備註 {remark!r}，先歸為「未知備註」。請把它加進 REMARK_RULES")
         return UNKNOWN_REMARK
     return status
 
@@ -83,14 +77,13 @@ def clamp(x):
 
 def evaluate(row):
     """
-    算一個機組在一個時間點的 availability 和容量因數。
-    回傳 dict；如果這個時間點不能算，availability 會是 None，並在 skip_reason 說明原因。
+    算一個機組在一個時間點的容量因數。
+    回傳 dict；如果這個時間點不能算，capacity_factor 會是 None，並在 skip_reason 說明原因。
     """
     status = classify(row["remark"])
     cap = row["capacity_mw"]
     out = row["output_mw"]
-    result = {**row, "status": status, "availability": None,
-              "capacity_factor": None, "skip_reason": ""}
+    result = {**row, "status": status, "capacity_factor": None, "skip_reason": ""}
 
     if cap is None or cap <= 0:
         result["skip_reason"] = "沒有裝置容量"
@@ -98,14 +91,9 @@ def evaluate(row):
         result["skip_reason"] = "試運轉中"
     elif status == UNKNOWN_STATUS:
         result["skip_reason"] = "通訊異常，狀態不明"
-    elif status in FULLY_AVAILABLE:
-        result["availability"] = 1.0
-        if out is not None:
-            result["capacity_factor"] = clamp(out / cap)
     elif out is None:
-        result["skip_reason"] = "發不出來，但沒有發電量數字"
-    else:  # OUTPUT_LIMITED
-        result["availability"] = clamp(out / cap)
+        result["skip_reason"] = "沒有發電量數字"
+    else:
         result["capacity_factor"] = clamp(out / cap)
     return result
 
@@ -117,8 +105,8 @@ def mean(values):
 
 def summarize_units(evaluated):
     """
-    每個機組在這段期間的平均 availability 和容量因數。
-    也記錄每種狀態出現幾次，網站上要用來標註「這段期間有檢修」。
+    每個機組在這段期間的平均容量因數。
+    也記錄停機類備註各出現幾次，網站上要用來標註「這段期間有檢修」。
     """
     by_unit = defaultdict(list)
     for r in evaluated:
@@ -127,18 +115,16 @@ def summarize_units(evaluated):
     summaries = []
     for unit_id, rs in by_unit.items():
         last = rs[-1]
-        flagged = Counter(r["remark"] for r in rs if r["status"] in FLAGGED)
         summaries.append({
             "unit_id": unit_id,
             "type": last["type"],
             "name": last["name"],
             "renewable": last["renewable"],
             "capacity_mw": last["capacity_mw"],
-            "availability": mean(r["availability"] for r in rs),
             "capacity_factor": mean(r["capacity_factor"] for r in rs),
-            "intervals_used": sum(r["availability"] is not None for r in rs),
+            "intervals_used": sum(r["capacity_factor"] is not None for r in rs),
             "intervals_total": len(rs),
-            "flagged": flagged,  # 例如 Counter({"部分檢修": 12, "檢修": 3})
+            "flagged": Counter(r["remark"] for r in rs if r["status"] in FLAGGED),
             "skip_reasons": Counter(r["skip_reason"] for r in rs if r["skip_reason"]),
         })
     return summaries
@@ -146,27 +132,22 @@ def summarize_units(evaluated):
 
 def summarize_types(evaluated):
     """
-    每一類（例如「風力」）在這段期間的平均 availability 和容量因數。
+    每一類（例如「風力」）在這段期間的平均容量因數。
 
-    每個時間點先用「裝置容量加權」算出整類的值：
-        整類 availability = 各機組能發的電加總 ÷ 各機組裝置容量加總
-    這樣大機組的影響比較大，比較符合實際：一座 600 MW 風場停機，
-    比一座 20 MW 風場停機影響大得多。最後再把每個時間點的值平均。
+    每個時間點先算整類的值：
+        整類容量因數 = 各機組發電量加總 ÷ 各機組裝置容量加總
+    這樣大機組的影響比較大，比較符合實際。最後再把每個時間點的值平均。
     """
-    per_time = defaultdict(lambda: {"cap": 0.0, "avail": 0.0,
-                                    "cf_cap": 0.0, "cf": 0.0})
+    per_time = defaultdict(lambda: {"cap": 0.0, "out": 0.0})
     flagged = defaultdict(set)
     for r in evaluated:
-        if r["availability"] is None:
+        if r["status"] in FLAGGED:
+            flagged[r["type"]].add(r["name"])
+        if r["capacity_factor"] is None:
             continue
         cell = per_time[(r["type"], r["time"])]
         cell["cap"] += r["capacity_mw"]
-        cell["avail"] += r["availability"] * r["capacity_mw"]
-        if r["capacity_factor"] is not None:
-            cell["cf_cap"] += r["capacity_mw"]
-            cell["cf"] += r["capacity_factor"] * r["capacity_mw"]
-        if r["status"] in FLAGGED:
-            flagged[r["type"]].add(r["name"])
+        cell["out"] += r["capacity_factor"] * r["capacity_mw"]
 
     by_type = defaultdict(list)
     for (unit_type, _time), cell in per_time.items():
@@ -176,9 +157,7 @@ def summarize_types(evaluated):
     for unit_type, cells in by_type.items():
         summaries.append({
             "type": unit_type,
-            "availability": mean(c["avail"] / c["cap"] for c in cells),
-            "capacity_factor": mean(c["cf"] / c["cf_cap"] if c["cf_cap"] else None
-                                    for c in cells),
+            "capacity_factor": mean(c["out"] / c["cap"] for c in cells),
             "intervals": len(cells),
             "flagged_units": sorted(flagged[unit_type]),  # 這段期間曾檢修或故障的機組
         })
@@ -206,8 +185,8 @@ def save_csv(rows, path, fields):
 
 def main():
     if len(sys.argv) not in (2, 3):
-        print("用法：python3 availability.py 開始日期 [結束日期]")
-        print("例如：python3 availability.py 2026-11-10")
+        print("用法：python3 capacity_factor.py 開始日期 [結束日期]")
+        print("例如：python3 capacity_factor.py 2026-11-10")
         sys.exit(1)
     start = sys.argv[1]
     end = sys.argv[2] if len(sys.argv) == 3 else start
@@ -226,20 +205,19 @@ def main():
     expected = days * INTERVALS_PER_DAY
     print(f"期間 {start} ~ {end}，共 {len(times)} 個時間點"
           f"（應有 {expected} 個，資料完整度 {len(times) / expected:.0%}）")
-    print("（備註判斷規則與假設：docs/methodology.md）\n")
-    print(f"{'類型':<10}{'availability':>14}{'容量因數':>10}   曾檢修／故障的機組")
+    print("（計算方法與假設：docs/methodology.md）\n")
+    print(f"{'類型':<10}{'容量因數':>10}   曾檢修／故障的機組")
     for t in sorted(types, key=lambda t: (t["type"] not in {"太陽能", "風力", "水力", "其它再生能源"}, t["type"])):
         flagged = "、".join(t["flagged_units"]) or "（無）"
-        print(f"{t['type']:<10}{pct(t['availability']):>14}{pct(t['capacity_factor']):>12}   {flagged}")
+        print(f"{t['type']:<10}{pct(t['capacity_factor']):>12}   {flagged}")
 
     label = start if start == end else f"{start}_{end}"
-    unit_path = CLEAN_DIR / f"availability_units_{label}.csv"
-    type_path = CLEAN_DIR / f"availability_types_{label}.csv"
+    unit_path = CLEAN_DIR / f"capacity_factor_units_{label}.csv"
+    type_path = CLEAN_DIR / f"capacity_factor_types_{label}.csv"
     save_csv(units, unit_path, ["unit_id", "type", "name", "renewable", "capacity_mw",
-                                "availability", "capacity_factor", "intervals_used",
-                                "intervals_total", "flagged", "skip_reasons"])
-    save_csv(types, type_path, ["type", "availability", "capacity_factor",
-                                "intervals", "flagged_units"])
+                                "capacity_factor", "intervals_used", "intervals_total",
+                                "flagged", "skip_reasons"])
+    save_csv(types, type_path, ["type", "capacity_factor", "intervals", "flagged_units"])
     print(f"\n各機組明細：{unit_path.relative_to(PROJECT)}")
     print(f"各類型彙總：{type_path.relative_to(PROJECT)}")
 
