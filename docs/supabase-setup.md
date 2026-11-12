@@ -12,6 +12,7 @@
 | `supabase/migrations/001_schema.sql` | 建立所有資料表（步驟 2） |
 | `supabase/functions/collect/index.ts` | Edge Function：抓台電資料（步驟 3） |
 | `supabase/import_raw.sql` | 舊資料匯入檔（步驟 5） |
+| `supabase/migrations/002_schedule.sql` | pg_cron 排程（步驟 5.5） |
 | `supabase/make_import_sql.py` | 重新產生 `import_raw.sql` 的程式 |
 | `backup_collect.py` + `.github/workflows/collect.yml` | GitHub Actions 的備援收集＋警報（步驟 6） |
 
@@ -91,16 +92,35 @@
 
 （原始檔要不要也上傳到 Storage？可以不用，它們還在 GitHub 的 `data/raw` 裡。）
 
-## 下一步：pg_cron 排程（還沒做）
+## 步驟 5.5：設定 pg_cron 排程（每 3 分鐘自動收集）
 
-設定 Supabase 每 3 分鐘自動呼叫 `collect`。這一步做完、觀察一兩天都正常之後，
-才做下面的步驟 6。
+1. **取得 anon key**：左下角 **Project Settings**（齒輪）→ **API Keys** →
+   **Legacy API Keys** 分頁 → 複製 **anon public**（`eyJ` 開頭的一長串）。
+2. 打開 `supabase/migrations/002_schedule.sql`，複製全部內容，
+   貼到 SQL Editor（**下拉選單要選 Database**，不是 Logs）。
+3. 把裡面兩個「請貼上…」換成你的 Project URL 和 anon key（**單引號要保留**）。
+4. 按 **Run**。
+5. 等 10 分鐘，執行下面的查詢，應該看到好幾列新的 `source = supabase` 紀錄：
+   ```sql
+   select run_at, source, ok, data_time, rows_inserted, message
+   from collection_runs order by id desc limit 10;
+   ```
+   台電每 10 分鐘更新一次、我們每 3 分鐘抓一次，所以大部分紀錄 `rows_inserted` 是 0
+   （這個時間點已經存過了），大約每 3～4 列會有一列是 191。
+
+**如果沒有新紀錄**，執行下面兩個查詢，把結果貼給 Claude：
+```sql
+-- 排程有沒有在跑？
+select start_time, status, return_message from cron.job_run_details order by start_time desc limit 5;
+-- 呼叫 Edge Function 的結果（401 = 金鑰不對）
+select created, status_code, content from net._http_response order by created desc limit 5;
+```
 
 ---
 
 ## 步驟 6：GitHub Actions 改成「備援 + 警報」
 
-> ⚠️ **順序很重要**：要等 Supabase 的 pg_cron 排程開始穩定收資料之後才做這一步。
+> ⚠️ **順序很重要**：要等步驟 5.5 的 pg_cron 排程開始穩定收資料（觀察一兩天）之後才做這一步。
 > GitHub 的排程只會用 **main 分支**上的設定。這個分支的新設定合併進 main 之前，
 > 舊的 GitHub Actions 會繼續把資料存進 git。所以在那之前，資料不會漏掉。
 > 但如果太早合併，在 pg_cron 開始跑之前，就只剩每 15 分鐘的備援在收資料，
