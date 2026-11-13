@@ -3,6 +3,7 @@ const TEXT = {
   zh: {
     title: "台灣電力概況",
     navOverview: "總覽",
+    navAbout: "關於與計算方法",
     notFound: "找不到這個頁面，已回到總覽。",
     capacityLine: "裝置容量",
     output: "發電量",
@@ -56,6 +57,7 @@ const TEXT = {
   en: {
     title: "Taiwan Power Overview",
     navOverview: "Overview",
+    navAbout: "About & methodology",
     notFound: "That page doesn't exist. Showing the overview instead.",
     capacityLine: "Capacity",
     output: "Output",
