@@ -318,7 +318,7 @@ function renderUnits() {
   const rows = meta.units.filter((u) => u.category_id === state.selected).map((u) => ({
     u, name: name(u), cap: u.capacity_mw, now: u.output_mw,
     cf: cfByUnit[u.id] ? cfByUnit[u.id].sum / cfByUnit[u.id].n : null,
-    s: unitSeries.units[u.id] || { output: [], status: [] },
+    s: unitSeries.units[u.id] || { output: [], status: [], remark: [] },
   }));
   const k = state.sortKey;
   rows.sort((a, b) => {
@@ -329,14 +329,14 @@ function renderUnits() {
   });
 
   $("#units tbody").replaceChildren(...rows.map((r) => {
-    const remark = r.u.remark ? (getLang() === "en" && meta.remarks[r.u.remark]) || r.u.remark : "—";
+    const remark = r.u.remark ? remarkText(r.u.remark) : "—";
     return el("tr", {}, [
       el("td", { textContent: r.name }),
       el("td", { textContent: fmt(r.cap, 1), className: r.cap == null ? "dim" : "" }),
       el("td", { textContent: fmt(r.now, 1) }),
       el("td", { textContent: pct(r.cf), className: r.cf == null ? "dim" : "" }),
       el("td", { className: "c" }, [sparkline(r.s.output, r.cap)]),
-      el("td", { className: "c" }, [statusStrip(r.s.status, unitSeries.times)]),
+      el("td", { className: "c" }, [statusStrip(r.s.status, r.s.remark || [], unitSeries.times)]),
       el("td", { className: "c", textContent: remark }),
     ]);
   }));
@@ -357,21 +357,28 @@ function sparkline(values, cap) {
   return svg;
 }
 
-// 狀態色帶：連續相同的狀態畫成一段
-function statusStrip(statuses, times) {
+// 備註原文：英文版有翻譯就用翻譯，沒有就顯示中文原文
+function remarkText(remark) {
+  return (getLang() === "en" && state.meta.remarks[remark]) || remark;
+}
+
+// 狀態色帶：連續相同的狀態（而且備註相同）畫成一段。
+// 滑鼠移上去：有備註就顯示備註原文（例如「合約限制」），沒有備註就顯示狀態（例如「正常」）。
+function statusStrip(statuses, remarks, times) {
   const n = statuses.length, svg = svgEl("svg", { class: "strip", viewBox: `0 0 ${Math.max(n, 1)} 1`, preserveAspectRatio: "none", role: "img" });
-  const label = (id) => { const s = state.meta.statuses.find((x) => x.id === id); return s ? name(s) : t("noData"); };
+  const statusName = (id) => { const s = state.meta.statuses.find((x) => x.id === id); return s ? name(s) : t("noData"); };
+  const label = (i) => (statuses[i] !== 0 && remarks[i] ? remarkText(remarks[i]) : statusName(statuses[i]));
   const counts = {};
   for (let i = 0; i < n;) {
-    let j = i; while (j < n && statuses[j] === statuses[i]) j++;
+    let j = i; while (j < n && statuses[j] === statuses[i] && (remarks[j] || "") === (remarks[i] || "")) j++;
     const rect = svgEl("rect", { x: i, y: 0, width: j - i, height: 1, fill: cssVar(STATUS_COLOR[statuses[i]] || "--st-none") });
     const title = svgEl("title");
-    title.textContent = `${mmdd(times[i])} ${hhmm(times[i])} – ${mmdd(times[j - 1])} ${hhmm(times[j - 1])}　${label(statuses[i])}`;
+    title.textContent = `${mmdd(times[i])} ${hhmm(times[i])} – ${mmdd(times[j - 1])} ${hhmm(times[j - 1])}　${label(i)}`;
     rect.append(title); svg.append(rect);
-    counts[statuses[i]] = (counts[statuses[i]] || 0) + (j - i);
+    counts[label(i)] = (counts[label(i)] || 0) + (j - i);
     i = j;
   }
-  svg.setAttribute("aria-label", Object.entries(counts).map(([id, c]) => `${label(Number(id))} ${Math.round((c / n) * 100)}%`).join(", "));
+  svg.setAttribute("aria-label", Object.entries(counts).map(([l, c]) => `${l} ${Math.round((c / n) * 100)}%`).join(", "));
   return svg;
 }
 

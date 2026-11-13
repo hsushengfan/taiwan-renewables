@@ -16,6 +16,7 @@
 | `supabase/migrations/003_daily_stats.sql` | 每日彙總表（步驟 5.6） |
 | `supabase/migrations/004_remove_availability.sql` | 移除 availability 欄位（步驟 5.7，只有執行過舊版 003 的資料庫需要） |
 | `supabase/migrations/005_website_api.sql` | 網站需要的分類、英文名稱、彙總和讀資料的函式（步驟 5.8） |
+| `supabase/migrations/006_show_remarks.sql` | 「合約限制」等備註直接顯示原文（步驟 5.9） |
 | `supabase/make_import_sql.py` | 重新產生 `import_raw.sql` 的程式 |
 | `backup_collect.py` + `.github/workflows/collect.yml` | GitHub Actions 的備援收集＋警報（步驟 6） |
 
@@ -155,6 +156,13 @@ select created, status_code, content from net._http_response order by created de
 
 它會建立能源分類、機組的英文名稱、每 10 分鐘的類型彙總，以及給網站讀資料的 `api_` 函式。
 說明見 [database.md](database.md)。
+
+## 步驟 5.9：備註直接顯示原文
+
+執行 `supabase/migrations/006_show_remarks.sql`：貼到 SQL Editor（**下拉選單選 Database**），按 **Run**。
+
+狀態 7 改名為「其他備註」，「合約限制」、「計劃停機」、「環保檢測」加進規則表並補上英文，
+網站的狀態色帶改成直接顯示備註原文。計算方式不變。
 
 ---
 

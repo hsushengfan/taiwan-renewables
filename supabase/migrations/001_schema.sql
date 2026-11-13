@@ -35,7 +35,7 @@ insert into statuses (id, name, excluded_from_stats, flagged) values
   (4, '停機',     false, true),
   (5, '狀態不明', true,  false),
   (6, '試運轉',   true,  false),
-  (7, '未知備註', false, true)   -- 規則表裡沒有的備註
+  (7, '其他備註', false, true)   -- 不屬於上面幾類的備註；網站直接顯示備註原文
 on conflict (id) do update
   set name = excluded.name,
       excluded_from_stats = excluded.excluded_from_stats,
@@ -70,7 +70,10 @@ insert into remark_rules (remark, status_id) values
   ('通訊異常',         5),  -- 狀態不明
   ('新機組試俥',       6),  -- 試運轉
   ('新增設備測試運轉', 6),
-  ('測試運轉',         6)
+  ('測試運轉',         6),
+  ('合約限制',         7),  -- 其他備註（網站直接顯示備註原文）
+  ('計劃停機',         7),
+  ('環保檢測',         7)
 on conflict (remark) do update set status_id = excluded.status_id;
 
 
@@ -110,7 +113,7 @@ create table if not exists readings (
 create index if not exists readings_unit_time_idx on readings (unit_id, observed_at);
 
 
--- 寫入時自動依備註填 status_id；規則表裡沒有的備註 → 7（未知備註）
+-- 寫入時自動依備註填 status_id；規則表裡沒有的備註 → 7（其他備註）
 create or replace function classify_remark(p_remark text)
 returns smallint
 language sql stable

@@ -36,8 +36,8 @@ class RulesMatch(unittest.TestCase):
     def test_same_rules(self):
         self.assertEqual(capacity_factor.REMARK_RULES, self.sql_rules)
 
-    def test_unknown_remark_status(self):
-        self.assertEqual(self.statuses[7], capacity_factor.UNKNOWN_REMARK)
+    def test_other_remark_status(self):
+        self.assertEqual(self.statuses[7], capacity_factor.OTHER_REMARK)
 
 
 if __name__ == "__main__":
