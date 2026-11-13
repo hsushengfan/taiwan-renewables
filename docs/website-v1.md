@@ -58,6 +58,28 @@
 11 個能源分類、機組的陸域／離岸標記與英文名稱、每 10 分鐘的類型彙總、
 給網站讀資料的 `api_` 函式。詳見 [database.md](database.md)。
 
+## 網站的程式
+
+網站是靜態網站（只有 HTML、CSS、JavaScript，沒有額外的伺服器），放在 `site/` 資料夾，
+用 GitHub Pages 發布。`site/` 有修改並合併進 main 時，會自動重新發布（`.github/workflows/pages.yml`）。
+
+| 檔案 | 用途 |
+|---|---|
+| `site/index.html` | 頁面的骨架 |
+| `site/css/style.css` | 外觀（顏色、排版；淺色和深色模式） |
+| `site/js/config.js` | Supabase 的網址和公開金鑰、多久更新一次 |
+| `site/js/api.js` | 向 Supabase 讀資料（只呼叫 `api_` 函式） |
+| `site/js/i18n.js` | 介面文字的中英文對照 |
+| `site/js/app.js` | 主程式：讀資料、算數字、畫圖表和表格 |
+
+目前完成的是**總覽頁**：四個重點數字、堆疊面積圖、能源類型表、機組表，
+可切換 24 小時／7 天、中文／英文，每 3 分鐘自動更新。
+
+還沒做：30 天與 1 年的範圍、能源類型頁、機組頁。
+
+在自己電腦上預覽：在專案資料夾執行 `python3 -m http.server 8000 --directory site`，
+然後用瀏覽器打開 `http://localhost:8000`。
+
 ## 語言與公開範圍
 
 - **語言**：中文和英文兩個版本。

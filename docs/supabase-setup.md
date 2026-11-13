@@ -207,6 +207,18 @@ select * from missing_slots();
 
 ---
 
+## 步驟 7：發布網站（GitHub Pages）
+
+1. 打開 GitHub 上的 repo 頁面 → **Settings** → 左邊 **Pages**。
+2. **Build and deployment** 底下的 **Source**，選 **GitHub Actions**。（只要設定這一次。）
+3. 把含有 `site/` 的修改合併進 main。
+4. 到 **Actions** 分頁，等「部署網站」跑完（綠色勾勾）。
+5. 網站網址：`https://hsushengfan.github.io/taiwan-renewables/`
+
+之後只要 `site/` 有修改並合併進 main，網站就會自動更新。
+
+---
+
 ## 常用查詢
 
 ```sql

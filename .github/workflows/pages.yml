@@ -1,0 +1,46 @@
+# 把 site/ 資料夾部署到 GitHub Pages（網站）。
+#
+# 什麼時候會跑：site/ 裡的檔案有修改並且合併進 main 的時候；也可以在 Actions 頁面手動執行。
+# 需要先在 GitHub repo 的 Settings → Pages 把 Source 設成「GitHub Actions」。
+
+name: 部署網站
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read   # 讀程式碼
+  pages: write     # 發布到 GitHub Pages
+  id-token: write  # GitHub Pages 用來確認「這次部署是這個 repo 發出的」
+
+# 同一時間只部署一次；新的部署開始時，不中斷正在進行的那一次
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 下載 repo 內容
+        uses: actions/checkout@v4
+
+      - name: 準備 GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: 打包 site 資料夾
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: 發布
+        id: deployment
+        uses: actions/deploy-pages@v4

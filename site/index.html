@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>台灣電力概況 Taiwan Power Overview</title>
+  <meta name="description" content="台灣各能源與各機組的即時發電量、容量因數與機組狀態，每 10 分鐘更新。Real-time generation by source and unit in Taiwan.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 data-t="title"></h1>
+    <span class="sub" id="asof"></span>
+    <div class="seg lang" role="group" aria-label="Language">
+      <button type="button" data-lang="zh">中文</button>
+      <button type="button" data-lang="en">EN</button>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <section class="stats" id="stats"></section>
+
+  <div class="filters">
+    <div class="seg" role="group" id="ranges">
+      <button type="button" data-range="24h" data-t="range24h"></button>
+      <button type="button" data-range="7d" data-t="range7d"></button>
+      <button type="button" data-range="30d" data-t="range30d" disabled></button>
+      <button type="button" data-range="1y" data-t="range1y" disabled></button>
+    </div>
+  </div>
+
+  <section class="card">
+    <div class="cardhead">
+      <h2><span data-t="chartTitle"></span> <span class="sub" id="chartsub"></span></h2>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div id="chart"><svg id="svg" role="img"></svg><div id="tip" hidden></div></div>
+  </section>
+
+  <section class="card">
+    <div class="cardhead"><h2 data-t="catTitle"></h2><span class="sub" data-t="catHint"></span></div>
+    <div class="scroll"><table id="cats"><thead><tr>
+      <th data-t="colCategory"></th><th data-t="colNow"></th><th class="c" data-t="colShare"></th>
+      <th data-t="colCapacity"></th><th data-t="colEnergy"></th><th data-t="colCf"></th><th data-t="colUnits"></th>
+    </tr></thead><tbody></tbody></table></div>
+    <p class="note" data-t="catNote"></p>
+  </section>
+
+  <section class="card" id="unitcard">
+    <div class="cardhead"><h2 id="unittitle"></h2></div>
+    <div class="scroll"><table id="units"><thead><tr>
+      <th class="sortable" data-k="name" data-t="colUnit"></th>
+      <th class="sortable" data-k="cap" data-t="colCapacity"></th>
+      <th class="sortable" data-k="now" data-t="colNow"></th>
+      <th class="sortable" data-k="cf" data-t="colUnitCf"></th>
+      <th class="c" data-t="colTrend"></th><th class="c" data-t="colStatus"></th><th class="c" data-t="colRemark"></th>
+    </tr></thead><tbody></tbody></table></div>
+    <div class="key" id="statuskey"></div>
+    <p class="note" data-t="unitNote"></p>
+  </section>
+
+  <footer>
+    <p><span data-t="footSource"></span> ·
+       <a href="https://data.gov.tw/dataset/8931" target="_blank" rel="noopener">data.gov.tw</a> ·
+       <a href="https://github.com/hsushengfan/taiwan-renewables/blob/main/docs/methodology.md" target="_blank" rel="noopener" data-t="footMethod"></a></p>
+    <p data-t="footNote"></p>
+  </footer>
+</div>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
