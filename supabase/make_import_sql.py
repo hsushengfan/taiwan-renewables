@@ -10,8 +10,9 @@
 和 Edge Function 用的是同一個函式，所以整理規則完全一樣。
 已經存過的時間點會自動略過，重複執行沒關係。
 
-只匯入 DATA_START 之後的資料：之前的資料是舊的 GitHub Actions 收集的，
-三天只有 6 個時間點，不具代表性（見 supabase/migrations/007_trim_early_data.sql）。
+只匯入 DATA_START 之後的資料：資料從第一個完整的一天（2026-11-13）開始，
+之前的資料不完整，不具代表性（見 supabase/migrations/007_trim_early_data.sql）。
+data/raw 裡的原始檔都在這之前，所以現在產生的匯入檔是空的。
 """
 
 import json
@@ -24,8 +25,8 @@ from clean_data import RAW_DIR, read_snapshot  # noqa: E402
 
 OUTPUT = PROJECT / "supabase" / "import_raw.sql"
 
-# 資料的起始時間（台灣時間）：2026-11-12 10:10 起才是連續收集的資料
-DATA_START = "2026-11-12T10:10:00"
+# 資料的起始時間（台灣時間）：第一個從 00:00 開始、每 10 分鐘都有資料的一天
+DATA_START = "2026-11-13T00:00:00"
 
 
 def sql_literal(text):
