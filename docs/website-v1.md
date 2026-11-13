@@ -74,6 +74,7 @@
 | `site/js/views/overview.js` | 總覽頁 |
 | `site/js/views/category.js` | 能源類型頁 |
 | `site/js/views/unit.js` | 機組頁 |
+| `site/js/analytics.js` | 瀏覽人數統計（GoatCounter）。網站代號設定在 `config.js` 的 `GOATCOUNTER_CODE` |
 | `site/js/views/about.js` | 關於與計算方法頁（`docs/methodology.md` 的網站版，中英文） |
 | `site/favicon.svg`、`site/apple-touch-icon.png` | 瀏覽器分頁和手機主畫面的圖示 |
 | `site/og.png` | 分享到 LINE、Facebook、LinkedIn 時的預覽圖（1200 × 630） |
@@ -97,6 +98,10 @@
 **流量**：網頁開著時每 3 分鐘檢查一次有沒有新資料；沒有新資料時只下載約 6 KB 的基本資料，
 有新資料才重新下載圖表（總覽頁約 13 KB，經過壓縮）。
 
+**瀏覽人數統計**：用 GoatCounter（不使用 cookie、不記錄可辨識個人的資訊）。
+每個頁面分開記錄（例如 `/taiwan-renewables/#unit-173`）；切換語言、切換時間範圍記錄成 Events
+（`lang-en`、`range-7d` 等）。在 `https://<網站代號>.goatcounter.com` 查看。
+
 在自己電腦上預覽：在專案資料夾執行 `python3 -m http.server 8000 --directory site`，
 然後用瀏覽器打開 `http://localhost:8000`。
 
@@ -106,3 +111,9 @@
   機組名稱、能源類型、狀態、備註都需要英文對照（機組的英文名稱要另外建立對照）。
 - **公開範圍**：第一版完全公開，不需要登入。
   日後如果要在網站上提供其他服務，才可能改成需要登入。
+
+## 之後要做的功能
+
+- **資料下載（CSV）**：每個圖表和表格都能把看到的數字下載成 CSV，給使用者拉到 Excel 自己分析。
+  **之後新增的功能也都要提供下載。**（預計 2026-12 中，和 30 天、1 年的時間範圍一起做。）
+- **30 天、1 年的時間範圍**：資料累積約一個月後再開放。

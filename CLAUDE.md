@@ -11,3 +11,4 @@
 - **收到新機組通知時**（使用者貼上通知信）：用一個新的 SQL 檔（`supabase/migrations/`）更新 `units.name_en`、
   需要時更新 `units.category_id`（離岸風場改成 11），然後 `select refresh_category_readings();`；
   同時更新 `docs/unit-names.md` 對照表。
+- **網站的新功能都要能下載資料**：使用者希望每個圖表和表格都能下載成 CSV（資料下載功能預計 2026-12 中做；之後新增的功能也要包含）。

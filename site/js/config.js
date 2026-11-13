@@ -8,3 +8,8 @@ export const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 // 每隔多久重新讀一次資料（毫秒）。台電每 10 分鐘更新，這裡每 3 分鐘檢查一次。
 export const REFRESH_MS = 3 * 60 * 1000;
+
+// 瀏覽人數統計（GoatCounter）。填入你在 goatcounter.com 註冊的網站代號，
+// 例如註冊的網址是 https://twpower.goatcounter.com，這裡就填 "twpower"。
+// 空字串＝不統計。
+export const GOATCOUNTER_CODE = "";

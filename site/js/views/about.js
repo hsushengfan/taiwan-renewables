@@ -92,6 +92,11 @@ const CONTENT = {
 </section>
 
 <section class="card prose">
+  <h3>隱私</h3>
+  <p>本網站用 <a href="https://www.goatcounter.com" target="_blank" rel="noopener">GoatCounter</a> 統計瀏覽次數。它不使用 cookie，也不記錄可以辨識個人的資訊。網站沒有登入功能，不收集任何個人資料。</p>
+</section>
+
+<section class="card prose">
   <h3>原始碼與完整說明</h3>
   <p>網站和資料收集的程式碼公開在 <a href="${REPO}" target="_blank" rel="noopener">GitHub</a>，完整的計算說明見 <a href="${REPO}/blob/main/docs/methodology.md" target="_blank" rel="noopener">methodology.md</a>。</p>
 </section>`,
@@ -168,6 +173,11 @@ const CONTENT = {
     <li><b>Some rows combine several units</b>, such as "Other Purchased Solar" and "Northern Small Hydro", and can only be treated as a whole. According to Taipower's notes, only solar plants above 20 MW connected at 69 kV or higher are listed individually; the rest are combined into "Other Purchased Solar", about 98% of total solar capacity.</li>
     <li><b>Output occasionally exceeds installed capacity</b> (for example 104%), possibly because the capacity figure has not been updated. Capacity factor is capped at 100%.</li>
   </ol>
+</section>
+
+<section class="card prose">
+  <h3>Privacy</h3>
+  <p>This site counts page views with <a href="https://www.goatcounter.com" target="_blank" rel="noopener">GoatCounter</a>, which uses no cookies and records no information that identifies individuals. The site has no sign-in and collects no personal data.</p>
 </section>
 
 <section class="card prose">
