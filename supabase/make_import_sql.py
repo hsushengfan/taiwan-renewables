@@ -9,6 +9,9 @@
     select ingest_snapshot('{...原始 JSON...}'::jsonb, 'import');
 和 Edge Function 用的是同一個函式，所以整理規則完全一樣。
 已經存過的時間點會自動略過，重複執行沒關係。
+
+只匯入 DATA_START 之後的資料：之前的資料是舊的 GitHub Actions 收集的，
+三天只有 6 個時間點，不具代表性（見 supabase/migrations/007_trim_early_data.sql）。
 """
 
 import json
@@ -20,6 +23,9 @@ sys.path.insert(0, str(PROJECT))
 from clean_data import RAW_DIR, read_snapshot  # noqa: E402
 
 OUTPUT = PROJECT / "supabase" / "import_raw.sql"
+
+# 資料的起始時間（台灣時間）：2026-11-12 10:10 起才是連續收集的資料
+DATA_START = "2026-11-12T10:10:00"
 
 
 def sql_literal(text):
@@ -34,14 +40,19 @@ def main():
         sys.exit(1)
 
     lines = ["-- 由 supabase/make_import_sql.py 產生，貼到 Supabase SQL Editor 執行"]
+    skipped = 0
     for path in paths:
         raw = read_snapshot(path)
+        if raw["DateTime"] < DATA_START:
+            skipped += 1
+            continue
         text = json.dumps(raw, ensure_ascii=False, separators=(",", ":"))
         lines.append(f"select ingest_snapshot({sql_literal(text)}::jsonb, 'import');")
 
     OUTPUT.write_text("\n".join(lines) + "\n", encoding="utf-8")
     size_kb = OUTPUT.stat().st_size / 1024
-    print(f"{len(paths)} 個時間點 → {OUTPUT.relative_to(PROJECT)}（{size_kb:.0f} KB）")
+    print(f"{len(paths) - skipped} 個時間點 → {OUTPUT.relative_to(PROJECT)}（{size_kb:.0f} KB）"
+          f"；略過 {DATA_START} 之前的 {skipped} 個")
 
 
 if __name__ == "__main__":

@@ -101,6 +101,7 @@ flowchart TD
 - **從哪裡來**：Edge Function `collect` 每 3 分鐘抓一次台電的資料，由 `ingest_snapshot()` 整理後寫入。
   已經存過的時間點會自動略過。
 - **不會重複**：同一個時間點、同一個機組只會有一筆（主鍵是 `observed_at` + `unit_id`）。
+- **資料從哪天開始**：2026-11-12 10:10（台灣時間）。之前舊系統收集的零星資料已用 `007_trim_early_data.sql` 排除（原始檔仍保存在 Storage 和 GitHub 的 `data/raw`）。
 
 | 欄位 | 意思 | 單位／格式 | 來源 |
 |---|---|---|---|
