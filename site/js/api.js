@@ -26,10 +26,11 @@ export const getMeta = () => rpc("api_meta");
 export const getCategorySeries = (from, to, bucket) =>
   rpc("api_category_series", { p_from: from, p_to: to, p_bucket: bucket });
 
-// 某個分類底下，每個機組每 10 分鐘的發電量和狀態
-export const getUnitSeries = (from, to, categoryId) =>
-  rpc("api_unit_series", { p_from: from, p_to: to, p_category_id: categoryId });
+// 每個機組每 10 分鐘的發電量、狀態和備註。
+// 給 categoryId：這個分類的全部機組；給 unitId：只有這個機組。
+export const getUnitSeries = (from, to, { categoryId = null, unitId = null }) =>
+  rpc("api_unit_series", { p_from: from, p_to: to, p_category_id: categoryId, p_unit_id: unitId });
 
-// 每日彙總（用來算機組在這段期間的容量因數）
-export const getDaily = (fromDay, toDay, categoryId) =>
-  rpc("api_daily", { p_from: fromDay, p_to: toDay, p_category_id: categoryId });
+// 每日彙總（發電量、容量因數、資料完整度）。給 categoryId 或 unitId，用法同上。
+export const getDaily = (fromDay, toDay, { categoryId = null, unitId = null }) =>
+  rpc("api_daily", { p_from: fromDay, p_to: toDay, p_category_id: categoryId, p_unit_id: unitId });
