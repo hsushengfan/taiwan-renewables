@@ -4,6 +4,7 @@
 //   （沒有 #）              總覽頁            views/overview.js
 //   #category-wind_offshore 能源類型頁        views/category.js
 //   #unit-173               機組頁            views/unit.js
+//   #about                  關於／計算方法    views/about.js
 //
 // 每一頁都有兩個函式：
 //   load(ctx, ...)    向 Supabase 讀這一頁需要的資料
@@ -16,6 +17,7 @@ import { $, el, taipeiIso } from "./util.js";
 import * as overview from "./views/overview.js";
 import * as category from "./views/category.js";
 import * as unit from "./views/unit.js";
+import * as about from "./views/about.js";
 
 // 時間範圍：往回看幾小時、用哪種粒度
 const RANGES = { "24h": { hours: 24, bucket: "10min" }, "7d": { hours: 24 * 7, bucket: "10min" } };
@@ -28,20 +30,24 @@ function parseRoute() {
   let m;
   if ((m = h.match(/^category-([a-z_]+)$/))) return { view: category, arg: m[1], key: h };
   if ((m = h.match(/^unit-(\d+)$/))) return { view: unit, arg: Number(m[1]), key: h };
+  if (h === "about") return { view: about, arg: null, key: h };
   return { view: overview, arg: null, key: "" };
 }
 
 // =====================================================================
 // 讀資料
 // =====================================================================
-async function load() {
+// refresh：是不是「每 3 分鐘的自動更新」。自動更新時，如果台電還沒有新資料，就不重新下載，節省流量。
+async function load({ refresh = false } = {}) {
   const id = ++state.loadId;           // 連續點很快時，只採用最後一次的結果
   const route = parseRoute();
+  if (refresh && state.route?.key !== route.key) refresh = false;
   const view = $("#view");
   view.classList.add("stale");         // 讀取中先把舊畫面變淡，不要整個清掉
   try {
     const meta = await getMeta();
     if (!meta.latest) throw new Error("no data");
+    if (refresh && state.ctx && meta.latest === state.ctx.meta.latest) return;   // 沒有新資料，畫面不用變
     const range = RANGES[state.range];
     const to = new Date(meta.latest).getTime() + 60e3;   // 包含最新一筆
     const from = to - range.hours * 3600e3;
@@ -91,6 +97,7 @@ function render() {
     b.setAttribute("aria-pressed", b.dataset.range === state.range);
     if (b.disabled) b.title = t("rangeSoon");
   });
+  $("#filters").hidden = state.route?.view === about;     // 關於頁不需要時間範圍
   if (!state.ctx) { document.title = t("title"); return; }
   const { meta } = state.ctx;
   $("#asof").textContent = t("asof", `${meta.latest.slice(0, 10)} ${meta.latest.slice(11, 16)}`);
@@ -121,5 +128,5 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if
 // =====================================================================
 render();                                                                   // 先把介面文字放上去
 load();                                                                     // 讀第一次資料
-setInterval(() => { if (!document.hidden) load(); }, REFRESH_MS);           // 之後每 3 分鐘更新
-document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });   // 切回分頁時馬上更新
+setInterval(() => { if (!document.hidden) load({ refresh: true }); }, REFRESH_MS);           // 之後每 3 分鐘檢查一次
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load({ refresh: true }); });   // 切回分頁時馬上檢查

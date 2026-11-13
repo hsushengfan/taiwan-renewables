@@ -23,7 +23,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font
 a{color:inherit}
 .wrap{max-width:1120px;margin:0 auto;padding:24px 16px 48px;display:flex;flex-direction:column;gap:20px}
 header{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px}
-header .lang{margin-left:auto}
+header .topnav{margin-left:auto;font-size:13px}
+header .topnav a{color:var(--ink2)}
 h1{font-size:22px;font-weight:650;margin:0;letter-spacing:.01em}
 h2{font-size:16px;font-weight:650;margin:0}
 .sub{color:var(--ink2);font-size:13px;font-weight:400}
@@ -98,3 +99,15 @@ svg.strip{display:block;width:192px;height:14px;border-radius:2px}
 .note{color:var(--ink2);font-size:12px;max-width:80ch;margin:10px 0 0}
 footer{color:var(--ink2);font-size:12px}
 footer p{margin:0 0 4px}
+
+/* 關於頁 */
+.prose h3{font-size:16px;margin:0 0 8px}
+.prose p{margin:0 0 8px;max-width:80ch}
+.prose p:last-child{margin-bottom:0}
+.prose .note{margin-top:8px}
+.prose ul,.prose ol{margin:0;padding-left:20px;max-width:80ch;display:flex;flex-direction:column;gap:6px}
+.prose table td{white-space:normal;vertical-align:top}
+.prose table td:first-child{min-width:7em}
+.prose table td.c{min-width:0}
+.prose a{color:var(--g4)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:8px;vertical-align:-1px}

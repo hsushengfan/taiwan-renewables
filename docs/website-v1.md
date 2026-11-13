@@ -74,6 +74,9 @@
 | `site/js/views/overview.js` | 總覽頁 |
 | `site/js/views/category.js` | 能源類型頁 |
 | `site/js/views/unit.js` | 機組頁 |
+| `site/js/views/about.js` | 關於與計算方法頁（`docs/methodology.md` 的網站版，中英文） |
+| `site/favicon.svg`、`site/apple-touch-icon.png` | 瀏覽器分頁和手機主畫面的圖示 |
+| `site/og.png` | 分享到 LINE、Facebook、LinkedIn 時的預覽圖（1200 × 630） |
 | `site/js/charts.js` | 共用的圖表：堆疊面積圖、單一曲線圖、狀態色帶、小趨勢線 |
 | `site/js/model.js` | 從資料裡查分類的顏色、狀態和備註的名稱 |
 | `site/js/util.js` | 共用的小工具（數字格式、時間格式） |
@@ -85,10 +88,14 @@
 | 總覽 | `…/taiwan-renewables/` | 四個重點數字、各能源堆疊面積圖、能源類型表 |
 | 能源類型頁 | `…/#category-wind_offshore` | 該類型的發電量曲線（加上裝置容量參考線）、機組表 |
 | 機組頁 | `…/#unit-173` | 發電量曲線、和時間軸對齊的狀態色帶、每日紀錄 |
+| 關於與計算方法 | `…/#about` | 資料來源、指標定義、為什麼沒有可用率、狀態分類、能源分類、已知限制 |
 
 能源類型的代號見 `docs/database.md` 的 `categories` 表；機組編號是 `units.id`。
 
 時間範圍目前有 24 小時和 7 天；30 天和 1 年等資料累積後開放。
+
+**流量**：網頁開著時每 3 分鐘檢查一次有沒有新資料；沒有新資料時只下載約 6 KB 的基本資料，
+有新資料才重新下載圖表（總覽頁約 13 KB，經過壓縮）。
 
 在自己電腦上預覽：在專案資料夾執行 `python3 -m http.server 8000 --directory site`，
 然後用瀏覽器打開 `http://localhost:8000`。
