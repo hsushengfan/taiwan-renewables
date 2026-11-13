@@ -15,7 +15,7 @@
 
 ## 1. 一眼看懂
 
-資料庫裡有 8 張資料表、1 個 view，另外在 Storage（雲端硬碟）存原始檔。
+資料庫裡有 9 張資料表、1 個 view，另外在 Storage（雲端硬碟）存原始檔。
 
 | 名稱 | 種類 | 一筆資料代表什麼 | 原始還是算出來的 |
 |---|---|---|---|
@@ -25,6 +25,7 @@
 | [`statuses`](#statuses狀態代碼) | 資料表 | 一種狀態（例如「停機」） | 我們自己訂的規則 |
 | [`remark_rules`](#remark_rules備註分類規則) | 資料表 | 一條「備註 → 狀態」的對應規則 | 我們自己訂的規則 |
 | [`collection_runs`](#collection_runs收集紀錄) | 資料表 | 收集程式執行了一次 | 系統紀錄 |
+| [`usage_checks`](#usage_checks用量紀錄) | 資料表 | 某一天的資料庫和 Storage 用量 | 系統紀錄 |
 | [`daily_unit_stats`](#daily_unit_stats每日彙總) | 資料表 | 某個機組某一天的彙總 | **算出來的**，可以隨時重算 |
 | [`category_readings`](#category_readings每-10-分鐘各分類的彙總) | 資料表 | 某個分類在某個時間點的合計 | **算出來的**，可以隨時重算 |
 | [`readings_evaluated`](#readings_evaluated加上容量因數的發電紀錄) | view | 和 `readings` 一樣，多一欄容量因數 | **算出來的**，每次查詢時即時計算 |
@@ -289,6 +290,24 @@ select refresh_category_readings();
 
 改了機組的分類之後，要全部重算一次：`select refresh_category_readings();`
 
+### `usage_checks`：用量紀錄
+
+- **一筆資料代表**：某一次用量檢查的結果。
+- **多久新增一次**：每天一筆（排程 `usage-report`，台灣時間 09:07）。
+- **從哪裡來**：`record_usage()` 量出來的。
+- **用途**：判斷要不要寄警告信，以及用最近 30 天的紀錄估算資料庫每天長多少、大約什麼時候會滿。
+
+| 欄位 | 意思 | 單位／格式 |
+|---|---|---|
+| `checked_at` | 檢查的時間 | 時間 |
+| `db_bytes` | 資料庫的大小 | bytes（÷ 1,048,576 ＝ MB） |
+| `storage_bytes` | Storage 裡所有檔案的大小 | bytes |
+| `alert_level` | 警告等級：0 低於 70%；1 超過 70%；2 超過 85%；3 超過 95%（資料庫和 Storage 取比較高的那個） | 0～3 |
+
+這次的等級比上一次高，就代表「第一次超過」某個門檻，會寄警告信。
+
+**升級方案之後**：要把 `record_usage()` 的預設上限改成新方案的數字（例如 Pro 的 8 GB），否則警告信會算錯。
+
 ### `readings_evaluated`：加上容量因數的發電紀錄
 
 - **種類**：view（不存資料，查詢時即時計算）。
@@ -323,6 +342,7 @@ select refresh_category_readings();
 |---|---|---|---|
 | `collect-taipower` | 每 3 分鐘 | 呼叫 Edge Function `collect` 抓台電資料 | `002_schedule.sql` |
 | `refresh-daily-stats` | 每小時的第 20 分 | 重算 `daily_unit_stats` 的今天和昨天 | `003_daily_stats.sql` |
+| `usage-report` | 每天台灣時間 09:07 | 呼叫 Edge Function `usage-report`：記錄用量；每月 1 號寄用量報告，第一次超過 70%／85%／95% 時寄警告信 | `009_usage_report.sql` |
 | `cleanup-logs` | 每天台灣時間 03:07 | 刪除 90 天前的 `collection_runs`、7 天前的排程執行紀錄 | `002_schedule.sql` |
 
 ## 6. 資料庫裡的函式
@@ -336,6 +356,7 @@ select refresh_category_readings();
 | `refresh_daily_stats(day)` | 重算某一天的 `daily_unit_stats` |
 | `refresh_category_readings(from, to)` | 重算一段時間的 `category_readings`。不給參數就是全部重算 |
 | `default_category_id(type)` | 台電的機組類型對應到哪個預設分類 |
+| `record_usage(資料庫上限MB, Storage上限MB)` | 量一次用量、存進 `usage_checks`，回傳寄信需要的數字。預設上限是免費方案的 500 MB 和 1024 MB |
 | `pending_unit_notices()` | 列出還沒通知過的新機組，以及需要使用者決定的分類問題 |
 | `mark_units_notified(ids)` | 新機組通知信寄出後，標記成已通知 |
 | `missing_slots(days)` | 列出最近幾天缺了哪些時間點。用法：`select * from missing_slots(2);` |
