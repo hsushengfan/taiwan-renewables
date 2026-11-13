@@ -34,7 +34,7 @@ PARTIAL_OUTAGE = "部分停機"
 FULL_OUTAGE = "停機"
 UNKNOWN_STATUS = "狀態不明"   # 通訊異常，發電量數字不可靠
 TESTING = "試運轉"            # 還沒正式商轉
-UNKNOWN_REMARK = "未知備註"   # 規則表裡沒有的備註
+OTHER_REMARK = "其他備註"     # 不屬於上面幾類的備註：網站直接顯示備註原文
 
 REMARK_RULES = {
     "": NORMAL,
@@ -52,12 +52,15 @@ REMARK_RULES = {
     "新機組試俥": TESTING,
     "新增設備測試運轉": TESTING,
     "測試運轉": TESTING,
+    "合約限制": OTHER_REMARK,
+    "計劃停機": OTHER_REMARK,
+    "環保檢測": OTHER_REMARK,
 }
 
 # 這幾類的時間點不列入容量因數的計算
 EXCLUDED = {UNKNOWN_STATUS, TESTING}
 # 這幾類要在網站上特別標註
-FLAGGED = {PARTIAL_OUTAGE, FULL_OUTAGE, UNKNOWN_REMARK}
+FLAGGED = {PARTIAL_OUTAGE, FULL_OUTAGE, OTHER_REMARK}
 
 INTERVALS_PER_DAY = 144  # 台電每 10 分鐘一筆，一天 144 筆
 
@@ -65,8 +68,8 @@ INTERVALS_PER_DAY = 144  # 台電每 10 分鐘一筆，一天 144 筆
 def classify(remark):
     status = REMARK_RULES.get(remark)
     if status is None:
-        warn(f"沒看過的備註 {remark!r}，先歸為「未知備註」。請把它加進 REMARK_RULES")
-        return UNKNOWN_REMARK
+        warn(f"沒看過的備註 {remark!r}，先歸為「其他備註」。請把它加進 REMARK_RULES")
+        return OTHER_REMARK
     return status
 
 

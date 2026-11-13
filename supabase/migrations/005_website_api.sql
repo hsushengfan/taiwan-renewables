@@ -304,7 +304,7 @@ alter table remark_rules add column if not exists remark_en text;
 
 update statuses s set name_en = v.name_en
   from (values (1, 'Normal'), (2, 'Voluntary curtailment'), (3, 'Partial outage'), (4, 'Outage'),
-               (5, 'Unknown'), (6, 'Commissioning'), (7, 'Unclassified')) as v(id, name_en)
+               (5, 'Unknown'), (6, 'Commissioning'), (7, 'Other remark')) as v(id, name_en)
  where s.id = v.id;
 
 update remark_rules r set remark_en = v.remark_en
