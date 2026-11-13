@@ -18,6 +18,7 @@
 | `supabase/migrations/005_website_api.sql` | 網站需要的分類、英文名稱、彙總和讀資料的函式（步驟 5.8） |
 | `supabase/migrations/006_show_remarks.sql` | 「合約限制」等備註直接顯示原文（步驟 5.9） |
 | `supabase/migrations/007_trim_early_data.sql` | 排除 2026-11-13 00:00 之前的資料（步驟 5.10） |
+| `supabase/migrations/008_new_unit_notices.sql` | 新機組通知（見「新機組通知」一節） |
 | `supabase/make_import_sql.py` | 重新產生 `import_raw.sql` 的程式 |
 | `backup_collect.py` + `.github/workflows/collect.yml` | GitHub Actions 的備援收集＋警報（步驟 6） |
 
@@ -256,6 +257,27 @@ select * from missing_slots();
 收到警報信時，到 SQL Editor 執行 `select * from collection_runs order by run_at desc limit 20;` 查原因。
 
 GitHub Actions 的備援已停用自動排程（從來沒有成功收到過資料），只留手動執行的按鈕。
+
+---
+
+## 新機組通知（Resend 寄信）
+
+台電出現新機組時，資料庫會自動加入，收集程式會寄一封信給你，列出需要你決定的事
+（英文名稱、風力是陸域還是離岸、沒看過的類型要歸哪一類）。
+
+設定步驟（只要做一次）：
+
+1. 執行 `supabase/migrations/008_new_unit_notices.sql`（SQL Editor，下拉選單選 Database）。
+   最後一行應該顯示「還沒通知的新機組：0」。
+2. 到 <https://resend.com> 註冊（可以用 Google 帳號）。用註冊的 email 收信，不需要設定網域。
+3. 在 Resend 左邊選單 **API Keys** → **Create API Key**，權限選 **Sending access**，複製產生的金鑰（`re_` 開頭，只會顯示一次）。
+4. 在 Supabase **Edge Functions** → **Secrets** 新增兩個：
+   - `RESEND_API_KEY`：剛剛複製的金鑰
+   - `NOTIFY_EMAIL`：你註冊 Resend 用的 email（要收通知信的地址）
+5. 把 `supabase/functions/collect/index.ts` 的最新內容貼到 Supabase 的 `collect` function，重新部署。
+6. 按 **Test** 測試：回應裡的 `newUnits` 應該是「沒有新機組」（或「不是新的時間點，不用檢查」）。
+
+收到通知信時：把信的內容貼給 Claude，告訴它每個機組的英文名稱和分類。
 
 ---
 

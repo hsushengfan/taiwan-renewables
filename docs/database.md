@@ -130,6 +130,7 @@ flowchart TD
 | `footnote` | 最近一次看到的註記編號，例如 `10`；沒有就是空字串 | 文字 | 台電 |
 | `category_id` | 網站用的能源分類，對應 `categories.id` | 1～11 | 我們訂的（新機組自動給預設值） |
 | `name_en` | 機組的英文名稱。沒有時是空值，網站會改顯示中文名稱 | 文字 | 我們翻譯的 |
+| `notified_at` | 寄過「新機組通知信」的時間。空值＝還沒通知過的新機組 | 時間 | 收集程式寄信後填上 |
 | `first_seen_at` | 這個機組第一次出現在資料裡的時間 | 時間 | 算出來的 |
 | `last_seen_at` | 這個機組最後一次出現在資料裡的時間 | 時間 | 算出來的 |
 
@@ -144,6 +145,10 @@ flowchart TD
 update units set category_id = 11 where type = '風力' and name = '新風場的名稱';
 select refresh_category_readings();
 ```
+
+**新機組通知**：台電出現新機組時，收集程式會寄一封信通知（`008_new_unit_notices.sql`、Edge Function `collect`）。
+信裡會列出需要決定的事：每個新機組的英文名稱；風力機組是陸域還是離岸；
+台電類型沒看過的機組要歸哪一類（決定之前 `category_id` 是空值，不會出現在網站的各能源統計裡）。
 
 ### `categories`：網站用的能源分類
 
@@ -331,6 +336,8 @@ select refresh_category_readings();
 | `refresh_daily_stats(day)` | 重算某一天的 `daily_unit_stats` |
 | `refresh_category_readings(from, to)` | 重算一段時間的 `category_readings`。不給參數就是全部重算 |
 | `default_category_id(type)` | 台電的機組類型對應到哪個預設分類 |
+| `pending_unit_notices()` | 列出還沒通知過的新機組，以及需要使用者決定的分類問題 |
+| `mark_units_notified(ids)` | 新機組通知信寄出後，標記成已通知 |
 | `missing_slots(days)` | 列出最近幾天缺了哪些時間點。用法：`select * from missing_slots(2);` |
 | `classify_remark(remark)` | 查某個備註對應的狀態代碼 |
 | `parse_taipower_number(text)` | 把台電的數字字串轉成數字（`"742.7"` → 742.7，`"-"` → 空值） |
