@@ -19,6 +19,8 @@
 | `supabase/migrations/006_show_remarks.sql` | 「合約限制」等備註直接顯示原文（步驟 5.9） |
 | `supabase/migrations/007_trim_early_data.sql` | 排除 2026-11-13 00:00 之前的資料（步驟 5.10） |
 | `supabase/migrations/008_new_unit_notices.sql` | 新機組通知（見「新機組通知」一節） |
+| `supabase/migrations/009_usage_report.sql` | 用量報告與警告的排程（見「用量報告與警告」一節） |
+| `supabase/functions/usage-report/index.ts` | Edge Function：檢查用量、寄信 |
 | `supabase/make_import_sql.py` | 重新產生 `import_raw.sql` 的程式 |
 | `backup_collect.py` + `.github/workflows/collect.yml` | GitHub Actions 的備援收集＋警報（步驟 6） |
 
@@ -278,6 +280,24 @@ GitHub Actions 的備援已停用自動排程（從來沒有成功收到過資�
 6. 按 **Test** 測試：回應裡的 `newUnits` 應該是「沒有新機組」（或「不是新的時間點，不用檢查」）。
 
 收到通知信時：把信的內容貼給 Claude，告訴它每個機組的英文名稱和分類。
+
+---
+
+## 用量報告與警告（Resend 寄信）
+
+每天檢查一次 Supabase 的用量（資料庫 500 MB、Storage 1 GB 的免費上限）：
+每月 1 號寄一封用量報告；用量第一次超過 70%、85%、95% 時，馬上寄警告信。
+寄信用的是和新機組通知同一組 Resend 設定，不用再設定 Secrets。
+
+設定步驟（只要做一次）：
+
+1. **先部署 Edge Function**：Supabase 左邊選單 **Edge Functions** → **Deploy a new function** → **Via Editor**，
+   名稱填 `usage-report`，貼上 `supabase/functions/usage-report/index.ts` 的全部內容，按 **Deploy**。
+2. **測試**：在 `usage-report` 的頁面按 **Test**，Method 選 **POST**，Request Body 填 `{"force": true}`，按 **Send Request**。
+   應該會收到一封「每月用量報告」的信，回應裡的 `email` 是「已寄信：…」。
+3. **設定排程**：執行 `supabase/migrations/009_usage_report.sql`（SQL Editor，下拉選單選 Database）。
+
+查看用量紀錄：`select * from usage_checks order by checked_at desc;`
 
 ---
 
