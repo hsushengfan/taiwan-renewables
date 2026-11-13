@@ -15,16 +15,18 @@
 
 ## 1. 一眼看懂
 
-資料庫裡有 6 張資料表、1 個 view，另外在 Storage（雲端硬碟）存原始檔。
+資料庫裡有 8 張資料表、1 個 view，另外在 Storage（雲端硬碟）存原始檔。
 
 | 名稱 | 種類 | 一筆資料代表什麼 | 原始還是算出來的 |
 |---|---|---|---|
 | [`readings`](#readings每-10-分鐘的發電紀錄) | 資料表 | 某個機組在某個時間點的發電狀況 | **原始資料** |
 | [`units`](#units機組清單) | 資料表 | 一個機組 | **原始資料**（從台電的資料整理出來） |
+| [`categories`](#categories網站用的能源分類) | 資料表 | 網站上的一個能源分類（例如「離岸風電」） | 我們自己訂的規則 |
 | [`statuses`](#statuses狀態代碼) | 資料表 | 一種狀態（例如「停機」） | 我們自己訂的規則 |
 | [`remark_rules`](#remark_rules備註分類規則) | 資料表 | 一條「備註 → 狀態」的對應規則 | 我們自己訂的規則 |
 | [`collection_runs`](#collection_runs收集紀錄) | 資料表 | 收集程式執行了一次 | 系統紀錄 |
 | [`daily_unit_stats`](#daily_unit_stats每日彙總) | 資料表 | 某個機組某一天的彙總 | **算出來的**，可以隨時重算 |
+| [`category_readings`](#category_readings每-10-分鐘各分類的彙總) | 資料表 | 某個分類在某個時間點的合計 | **算出來的**，可以隨時重算 |
 | [`readings_evaluated`](#readings_evaluated加上容量因數的發電紀錄) | view | 和 `readings` 一樣，多一欄容量因數 | **算出來的**，每次查詢時即時計算 |
 | Storage 的 `raw` | 檔案 | 台電某個時間點的完整原始 JSON | **原始資料**（最原始的備份） |
 
@@ -49,9 +51,18 @@ flowchart TD
     statuses["statuses<br/>狀態代碼"] -->|status_id| rules
     statuses -->|status_id| readings
 
+    categories["categories<br/>網站用的能源分類"] -->|category_id| units
+
     readings --> evaluated["readings_evaluated（view）<br/>加上容量因數"]
     evaluated -->|每小時重算| daily["daily_unit_stats<br/>每日彙總"]
+    evaluated -->|新資料進來時自動更新| catread["category_readings<br/>每 10 分鐘各分類的彙總"]
     units -->|unit_id| daily
+    categories -->|category_id| catread
+
+    daily --> api["api_ 函式<br/>網站讀資料的唯一入口"]
+    catread --> api
+    readings --> api
+    api --> web["網站"]
 ```
 
 用文字說：
@@ -59,7 +70,9 @@ flowchart TD
 - `readings` 是核心。它的每一筆都用 `unit_id` 指向 `units` 的一個機組，
   用 `status_id` 指向 `statuses` 的一種狀態。
 - `remark_rules` 決定「哪個備註對應哪個狀態」。資料寫進 `readings` 時，資料庫會自動查這張表來填 `status_id`。
-- `daily_unit_stats` 完全是從 `readings` 算出來的。
+- `units` 的每個機組用 `category_id` 指向 `categories` 的一個分類。
+- `daily_unit_stats` 和 `category_readings` 完全是從 `readings` 算出來的。
+- 網站不直接讀資料表，只透過 `api_` 開頭的函式讀資料（見第 7 節）。
 
 ---
 
@@ -70,8 +83,8 @@ flowchart TD
 | 類別 | 包含 | 說明 |
 |---|---|---|
 | **原始資料** | `readings` 的 `observed_at`、`unit_id`、`capacity_mw`、`output_mw`、`remark`；`units`；Storage 的 `raw` | 來自台電。台電的歷史資料不提供裝置容量和備註，所以漏掉的時間點無法補回 |
-| **規則** | `statuses`、`remark_rules` | 我們自己訂的分類方式，可以修改 |
-| **算出來的** | `readings.status_id`；`readings_evaluated`；`daily_unit_stats` | 由原始資料和規則算出來。規則改了，重算就好 |
+| **規則** | `statuses`、`remark_rules`、`categories`；`units` 的 `category_id` 和 `name_en`；各表的英文名稱 | 我們自己訂的分類方式和翻譯，可以修改 |
+| **算出來的** | `readings.status_id`；`readings_evaluated`；`daily_unit_stats`；`category_readings` | 由原始資料和規則算出來。規則改了，重算就好 |
 | **系統紀錄** | `collection_runs` | 用來查收集有沒有正常運作，只保留 90 天 |
 
 `readings.status_id` 比較特別：它存在原始資料的表裡，但它是由 `remark` 依規則算出來的。
@@ -114,11 +127,53 @@ flowchart TD
 | `name` | 機組名稱，已去掉「(註10)」這類註記，例如 `沃一風` | 文字 | 台電 |
 | `is_renewable` | 是不是再生能源（太陽能、風力、水力、其它再生能源） | 是／否 | 由 `type` 判斷 |
 | `footnote` | 最近一次看到的註記編號，例如 `10`；沒有就是空字串 | 文字 | 台電 |
+| `category_id` | 網站用的能源分類，對應 `categories.id` | 1～11 | 我們訂的（新機組自動給預設值） |
+| `name_en` | 機組的英文名稱。沒有時是空值，網站會改顯示中文名稱 | 文字 | 我們翻譯的 |
 | `first_seen_at` | 這個機組第一次出現在資料裡的時間 | 時間 | 算出來的 |
 | `last_seen_at` | 這個機組最後一次出現在資料裡的時間 | 時間 | 算出來的 |
 
 「類型 + 名稱」不能重複。因為不同類型裡有同名的機組（太陽能和風力都有「其它台電自有」），
 所以要兩個一起看才能確定是哪個機組。
+
+**分類怎麼決定**：台電出現新機組時，資料庫依它的 `type` 自動給預設分類
+（`default_category_id()`）。風力一律預設成「陸域風電」，因為台電的資料沒有區分陸域和離岸。
+**新的離岸風場要手動改成 11**，然後執行 `select refresh_category_readings();` 重算彙總：
+
+```sql
+update units set category_id = 11 where type = '風力' and name = '新風場的名稱';
+select refresh_category_readings();
+```
+
+### `categories`：網站用的能源分類
+
+- **一筆資料代表**：網站上的一個能源分類。
+- **多久新增一次**：固定 11 筆，不會自動新增。
+- **從哪裡來**：我們自己訂的，寫在 `005_website_api.sql`。
+- **為什麼需要**：台電的「機組類型」沒有區分陸域和離岸風電，
+  而且「燃料油」和「汽電共生」在網站上合併成一類。所以另外訂一套分類。
+
+| 欄位 | 意思 | 單位／格式 |
+|---|---|---|
+| `id` | 分類編號 | 1～11 |
+| `code` | 程式用的英文代號，例如 `wind_offshore` | 文字 |
+| `name_zh` | 中文名稱 | 文字 |
+| `name_en` | 英文名稱 | 文字 |
+| `is_renewable` | 是不是再生能源 | 是／否 |
+| `sort_order` | 堆疊圖由下到上的順序 | 1～11 |
+
+| id | code | 中文 | 英文 | 包含台電的哪些類型 |
+|---|---|---|---|---|
+| 1 | `coal` | 燃煤 | Coal | 燃煤 |
+| 2 | `ipp_coal` | 民營燃煤 | IPP Coal | 民營電廠-燃煤 |
+| 3 | `gas` | 燃氣 | Gas | 燃氣 |
+| 4 | `ipp_gas` | 民營燃氣 | IPP Gas | 民營電廠-燃氣 |
+| 5 | `other_thermal` | 其它火力 | Other Thermal | 燃料油、汽電共生 |
+| 6 | `storage` | 儲能 | Storage | 儲能 |
+| 7 | `hydro` | 水力 | Hydro | 水力 |
+| 8 | `other_renewable` | 其它再生能源 | Other Renewables | 其它再生能源 |
+| 9 | `solar` | 太陽能 | Solar | 太陽能 |
+| 10 | `wind_onshore` | 陸域風電 | Onshore Wind | 風力（不在離岸名單裡的） |
+| 11 | `wind_offshore` | 離岸風電 | Offshore Wind | 風力（離岸名單裡的 16 個風場） |
 
 ### `statuses`：狀態代碼
 
@@ -129,7 +184,8 @@ flowchart TD
 | 欄位 | 意思 | 單位／格式 |
 |---|---|---|
 | `id` | 狀態代碼 | 1～7 |
-| `name` | 狀態名稱 | 文字 |
+| `name` | 狀態名稱（中文） | 文字 |
+| `name_en` | 狀態名稱（英文） | 文字 |
 | `excluded_from_stats` | 這個狀態的時間點**不列入**容量因數的計算 | 是／否 |
 | `flagged` | 網站上要特別標註（檢修、故障等） | 是／否 |
 
@@ -156,6 +212,7 @@ flowchart TD
 |---|---|---|
 | `remark` | 台電的備註原文，例如 `部分檢修`。空字串代表「沒有備註」 | 文字 |
 | `status_id` | 對應的狀態，對應 `statuses.id` | 1～7 |
+| `remark_en` | 備註的英文翻譯。規則表裡沒有的備註，網站會顯示中文原文 | 文字 |
 
 規則表裡沒有的備註，會被歸為 7（未知備註）。
 新增、修改、刪除規則時，`readings` 裡有那個備註的舊資料會自動重新分類。
@@ -205,6 +262,26 @@ flowchart TD
 - 沒有裝置容量的機組，`capacity_factor` 和 `capacity_mw` 是空值，但 `generation_kwh` 照樣有數字。
 - 手動重算某一天：`select refresh_daily_stats('2026-11-12');`
 
+### `category_readings`：每 10 分鐘各分類的彙總
+
+- **一筆資料代表**：某個分類（例如「離岸風電」）在某個時間點的合計。
+- **多久新增一次**：台電每 10 分鐘更新一次，每次新增 11 筆（每個分類一筆）。
+- **從哪裡來**：`readings` 有新資料寫入時，資料庫自動算出那個時間點的 11 筆
+  （`readings_refresh_categories` 觸發器）。**整張表都是算出來的**，可以隨時重算。
+- **為什麼要另外存**：首頁的堆疊圖每次都要「11 類 × 幾百個時間點」的數字。
+  每次都從 191 個機組現算太慢，先算好存起來，網站讀起來才快。
+
+| 欄位 | 意思 | 單位／格式 |
+|---|---|---|
+| `observed_at` | 台電資料的時間點 | 時間 |
+| `category_id` | 哪個分類，對應 `categories.id` | 1～11 |
+| `output_mw` | 這一類全部機組的淨發電量加總 | **MW** |
+| `capacity_mw` | 這一類有裝置容量的機組，裝置容量加總 | **MW** |
+| `capacity_factor` | 這一類的容量因數：只計入「能算容量因數」的機組，用發電量加總 ÷ 裝置容量加總 | **0～1 的小數** |
+| `unit_count` | 這一類有幾個機組 | 個 |
+
+改了機組的分類之後，要全部重算一次：`select refresh_category_readings();`
+
 ### `readings_evaluated`：加上容量因數的發電紀錄
 
 - **種類**：view（不存資料，查詢時即時計算）。
@@ -250,18 +327,31 @@ flowchart TD
 | `ingest_snapshot(raw, source)` | 把一份台電原始 JSON 整理後寫進 `units`、`readings`、`collection_runs`。**所有整理資料的規則都在這裡** |
 | `log_collection_failure(source, message)` | 收集失敗時在 `collection_runs` 記一筆 |
 | `refresh_daily_stats(day)` | 重算某一天的 `daily_unit_stats` |
+| `refresh_category_readings(from, to)` | 重算一段時間的 `category_readings`。不給參數就是全部重算 |
+| `default_category_id(type)` | 台電的機組類型對應到哪個預設分類 |
 | `missing_slots(days)` | 列出最近幾天缺了哪些時間點。用法：`select * from missing_slots(2);` |
 | `classify_remark(remark)` | 查某個備註對應的狀態代碼 |
 | `parse_taipower_number(text)` | 把台電的數字字串轉成數字（`"742.7"` → 742.7，`"-"` → 空值） |
 
-## 7. 誰可以讀寫
+## 7. 誰可以讀寫，以及網站怎麼讀資料
 
 所有資料表都開了 RLS（Row Level Security），而且沒有設定任何開放規則。意思是：
 
 - **secret 金鑰**（收集程式、備援程式用）：可以讀寫全部資料。
-- **anon 金鑰**（可以公開的那把）：只能呼叫 Edge Function，讀不到也寫不了任何資料表。
+- **anon 金鑰**（可以公開的那把，網站用這把）：**不能直接讀寫任何資料表**，
+  只能呼叫下面這幾個 `api_` 開頭的函式。
 
-之後做網站時，要另外開放網站需要的資料表「只能讀」的權限。
+這樣設計的好處：只開放網站需要的內容；每個函式都限制了時間範圍，
+不會被人拿來一次撈走全部資料；資料表的結構之後要改，只要函式回傳的格式不變，網站就不受影響。
+
+| 函式 | 回傳什麼 | 限制 |
+|---|---|---|
+| `api_meta()` | 分類、狀態、備註的中英文；全部機組的清單和最新一筆的數字；資料的起訖時間 | |
+| `api_category_series(開始, 結束, 粒度)` | 各分類的發電量（MW）和容量因數的時間序列 | 粒度 `10min` 最多 8 天、`hour` 最多 100 天、`day` 最多 5 年 |
+| `api_unit_series(開始, 結束, 分類, 機組)` | 機組每 10 分鐘的發電量（MW）和狀態代碼。狀態 0 代表那個時間點沒有資料 | 最多 8 天；分類和機組至少要給一個 |
+| `api_daily(開始日, 結束日, 分類, 機組)` | 每日彙總（發電量、容量因數等） | 沒指定機組最多 62 天；指定單一機組最多 5 年 |
+
+`hour` 和 `day` 粒度回傳的是那段時間內每 10 分鐘數值的平均。
 
 ---
 
@@ -307,9 +397,5 @@ flowchart TD
 
 ### 其他已知會需要的
 
-這些是網站第一版需要的，詳見 [website-v1.md](website-v1.md)：
-
-- 能源類型的彙總（每 10 分鐘各類型的總發電量與容量因數）。
-- 每小時的彙總（給 30 天以上的圖表用）。
-- `units` 加上「陸域／離岸」的標記，以及網站用的 11 類分類。
-- 開放網站讀取資料的權限。
+- 更可靠的警報（現在的 GitHub 備援連不到台電，幫不上忙）。
+- 日後如果改成需要登入，Supabase 內建登入功能，`api_` 函式的權限要跟著調整。

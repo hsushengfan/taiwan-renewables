@@ -15,6 +15,7 @@
 | `supabase/migrations/002_schedule.sql` | pg_cron 排程（步驟 5.5） |
 | `supabase/migrations/003_daily_stats.sql` | 每日彙總表（步驟 5.6） |
 | `supabase/migrations/004_remove_availability.sql` | 移除 availability 欄位（步驟 5.7，只有執行過舊版 003 的資料庫需要） |
+| `supabase/migrations/005_website_api.sql` | 網站需要的分類、英文名稱、彙總和讀資料的函式（步驟 5.8） |
 | `supabase/make_import_sql.py` | 重新產生 `import_raw.sql` 的程式 |
 | `backup_collect.py` + `.github/workflows/collect.yml` | GitHub Actions 的備援收集＋警報（步驟 6） |
 
@@ -147,6 +148,13 @@ select created, status_code, content from net._http_response order by created de
 
 它會移除 availability 相關的欄位並重算每日彙總。原始的發電紀錄、備註、狀態代碼都不會動。
 全新安裝的資料庫不需要這一步（執行了也不會有問題）。
+
+## 步驟 5.8：網站需要的後端
+
+執行 `supabase/migrations/005_website_api.sql`：貼到 SQL Editor（**下拉選單選 Database**），按 **Run**。
+
+它會建立能源分類、機組的英文名稱、每 10 分鐘的類型彙總，以及給網站讀資料的 `api_` 函式。
+說明見 [database.md](database.md)。
 
 ---
 
