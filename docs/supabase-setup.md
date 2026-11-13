@@ -227,6 +227,29 @@ select * from missing_slots();
 
 ---
 
+## 警報：Healthchecks.io
+
+收集程式每收到一筆**新的** 10 分鐘資料，就向 Healthchecks.io「報到」一次。
+超過 40 分鐘沒有報到，Healthchecks.io 會寄 email 給你。
+不管是收集程式壞了、Supabase 被暫停，還是台電沒有更新，都會通知。
+
+設定步驟（只要做一次）：
+
+1. 在 healthchecks.io 建立一個 check，**Period** 設 10 分鐘、**Grace** 設 30 分鐘。
+   確認 **Integrations** 有勾選 Email。
+2. 複製這個 check 的 ping 網址（`https://hc-ping.com/…`）。
+3. 在 Supabase 左邊選單 **Edge Functions** → **Secrets** → 新增：
+   名稱 `HEALTHCHECK_URL`，值是剛剛複製的網址。
+   （ping 網址不寫在程式碼裡，因為這個 repo 是公開的：別人拿到網址就能假裝報到，讓警報失效。）
+4. 把 `supabase/functions/collect/index.ts` 的最新內容貼到 Supabase 的 `collect` function，重新部署。
+5. 10～20 分鐘後，Healthchecks.io 上這個 check 會變成綠色（up）。
+
+收到警報信時，到 SQL Editor 執行 `select * from collection_runs order by run_at desc limit 20;` 查原因。
+
+GitHub Actions 的備援已停用自動排程（從來沒有成功收到過資料），只留手動執行的按鈕。
+
+---
+
 ## 常用查詢
 
 ```sql

@@ -1,22 +1,18 @@
-# GitHub Actions：Supabase 的「備援 + 警報」
+# GitHub Actions：Supabase 備援收集與健康檢查（目前只能手動執行）
 #
-# 主要的收集已經改由 Supabase 每 3 分鐘做（見 docs/supabase-setup.md）。
-# 這裡每 15 分鐘跑一次 backup_collect.py：
-#   1. 備援收集：另外抓一次台電資料寫進 Supabase（重複的會自動略過）
-#   2. 健康檢查：資料庫超過 40 分鐘沒有新資料 → 這次執行失敗 → GitHub 寄 email 給你
+# 2026-11-13 起停用自動排程，原因：
+#   - GitHub 的主機連台電網站常常逾時，這個備援從來沒有成功收到過資料
+#   - GitHub 的免費排程很不準時，當警報也太慢
+# 警報改用 Healthchecks.io（見 docs/supabase-setup.md 的「警報」）。
 #
-# 不再把資料 commit 進 git 了。
-# 需要先在 GitHub repo 的 Settings → Secrets and variables → Actions 設定：
-#   SUPABASE_URL、SUPABASE_SERVICE_KEY
+# 還留著手動執行的按鈕：在 GitHub 的 Actions 分頁選這個 workflow，按 Run workflow，
+# 可以用來檢查資料庫的最新資料是不是超過 40 分鐘。
+# 需要 GitHub repo 的 Settings → Secrets 裡有 SUPABASE_URL、SUPABASE_SERVICE_KEY。
 
 name: Supabase 備援收集與健康檢查
 
 on:
-  schedule:
-    # 每 15 分鐘一次（時間是 UTC，不過固定間隔跟時區無關）。
-    # GitHub 不保證準時，但這裡只是備援，主要的收集在 Supabase。
-    - cron: "*/15 * * * *"
-  workflow_dispatch: # 讓你可以在 GitHub 網頁上按按鈕手動執行
+  workflow_dispatch: # 只能在 GitHub 網頁上按按鈕手動執行
 
 permissions:
   contents: read # 只需要讀程式碼，不再 commit 資料
