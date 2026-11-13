@@ -14,6 +14,7 @@
 | `supabase/import_raw.sql` | 舊資料匯入檔（步驟 5） |
 | `supabase/migrations/002_schedule.sql` | pg_cron 排程（步驟 5.5） |
 | `supabase/migrations/003_daily_stats.sql` | 每日彙總表（步驟 5.6） |
+| `supabase/migrations/004_remove_availability.sql` | 移除 availability 欄位（步驟 5.7，只有執行過舊版 003 的資料庫需要） |
 | `supabase/make_import_sql.py` | 重新產生 `import_raw.sql` 的程式 |
 | `backup_collect.py` + `.github/workflows/collect.yml` | GitHub Actions 的備援收集＋警報（步驟 6） |
 
@@ -125,7 +126,6 @@ select created, status_code, content from net._http_response order by created de
    ```sql
    select d.day, u.type, u.name,
           round(d.generation_kwh)                as 發電量_度,
-          round((d.availability * 100)::numeric, 1)    as availability_pct,
           round((d.capacity_factor * 100)::numeric, 1) as 容量因數_pct,
           d.capacity_mw,
           d.intervals_present                    as 時間點數,
@@ -139,6 +139,14 @@ select created, status_code, content from net._http_response order by created de
 
 之後每小時的第 20 分會自動重算「今天」和「昨天」，不用手動執行。
 要手動重算某一天：`select refresh_daily_stats('2026-11-12');`
+
+## 步驟 5.7：移除 availability（升級用）
+
+如果資料庫是用舊版的 `001`、`003` 建立的（2026-11-12 之前），執行一次
+`supabase/migrations/004_remove_availability.sql`：貼到 SQL Editor（**下拉選單選 Database**），按 **Run**。
+
+它會移除 availability 相關的欄位並重算每日彙總。原始的發電紀錄、備註、狀態代碼都不會動。
+全新安裝的資料庫不需要這一步（執行了也不會有問題）。
 
 ---
 
@@ -198,6 +206,6 @@ select * from missing_slots();
 select remark, count(*) from readings where status_id = 7 group by remark;
 
 -- 新增一條備註規則（例如把「計劃停機」歸為 4 停機）。
--- 舊資料會自動重新分類。記得 availability.py 的 REMARK_RULES 也要一起改！
+-- 舊資料會自動重新分類。記得 capacity_factor.py 的 REMARK_RULES 也要一起改！
 insert into remark_rules (remark, status_id) values ('計劃停機', 4);
 ```

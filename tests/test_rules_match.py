@@ -1,5 +1,5 @@
 """
-檢查「備註分類規則」在 Python（availability.py）和資料庫（001_schema.sql）兩邊是否完全一樣。
+檢查「備註分類規則」在 Python（capacity_factor.py）和資料庫（001_schema.sql）兩邊是否完全一樣。
 
 執行方式（在專案資料夾裡）：
     python3 -m unittest tests/test_rules_match.py
@@ -12,7 +12,7 @@ from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT))
-import availability  # noqa: E402
+import capacity_factor  # noqa: E402
 
 SCHEMA = PROJECT / "supabase" / "migrations" / "001_schema.sql"
 
@@ -34,10 +34,10 @@ class RulesMatch(unittest.TestCase):
                           re.findall(r"\('([^']*)',\s*(\d+)\)", sql_block(text, "remark_rules"))}
 
     def test_same_rules(self):
-        self.assertEqual(availability.REMARK_RULES, self.sql_rules)
+        self.assertEqual(capacity_factor.REMARK_RULES, self.sql_rules)
 
     def test_unknown_remark_status(self):
-        self.assertEqual(self.statuses[7], availability.UNKNOWN_REMARK)
+        self.assertEqual(self.statuses[7], capacity_factor.UNKNOWN_REMARK)
 
 
 if __name__ == "__main__":

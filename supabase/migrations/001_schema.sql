@@ -17,37 +17,34 @@ alter database postgres set timezone to 'Asia/Taipei';
 
 
 -- ---------------------------------------------------------------------
--- statuses：狀態代碼（和 availability.py 的分類一樣）
---   availability_rule 說明這個狀態的 availability 怎麼算：
---     full   = 一律 100%
---     output = 實際發電量 ÷ 裝置容量
---     skip   = 這個時間點不算
+-- statuses：狀態代碼（和 capacity_factor.py 的分類一樣）
+--   excluded_from_stats = 這個狀態的時間點不列入容量因數的計算（發電量數字不可靠，或還沒商轉）
 --   flagged = 網站上要特別標註（檢修、故障等）
 -- ---------------------------------------------------------------------
 create table if not exists statuses (
-  id                smallint primary key,
-  name              text not null unique,
-  availability_rule text not null check (availability_rule in ('full', 'output', 'skip')),
-  flagged           boolean not null default false
+  id                  smallint primary key,
+  name                text not null unique,
+  excluded_from_stats boolean not null default false,
+  flagged             boolean not null default false
 );
 
-insert into statuses (id, name, availability_rule, flagged) values
-  (1, '正常',     'full',   false),
-  (2, '主動少發', 'full',   false),
-  (3, '部分停機', 'output', true),
-  (4, '停機',     'output', true),
-  (5, '狀態不明', 'skip',   false),
-  (6, '試運轉',   'skip',   false),
-  (7, '未知備註', 'output', true)   -- 規則表裡沒有的備註，保守當作發不出來
+insert into statuses (id, name, excluded_from_stats, flagged) values
+  (1, '正常',     false, false),
+  (2, '主動少發', false, false),
+  (3, '部分停機', false, true),
+  (4, '停機',     false, true),
+  (5, '狀態不明', true,  false),
+  (6, '試運轉',   true,  false),
+  (7, '未知備註', false, true)   -- 規則表裡沒有的備註
 on conflict (id) do update
   set name = excluded.name,
-      availability_rule = excluded.availability_rule,
+      excluded_from_stats = excluded.excluded_from_stats,
       flagged = excluded.flagged;
 
 
 -- ---------------------------------------------------------------------
 -- remark_rules：備註 → 狀態代碼
--- 必須和 availability.py 的 REMARK_RULES 完全一致
+-- 必須和 capacity_factor.py 的 REMARK_RULES 完全一致
 -- （tests/test_rules_match.py 會自動檢查）。
 --
 -- 之後出現新備註，只要在這張表加一列，舊資料會自動重新分類

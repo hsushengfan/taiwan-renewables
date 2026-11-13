@@ -2,6 +2,11 @@
 
 > 狀態：**實作中**。操作步驟見 [supabase-setup.md](supabase-setup.md)。
 >
+> ⚠️ **這份是當初的規劃紀錄。** 文中提到的 availability（可用率）後來決定不做：
+> 台電的資料沒有「實際可用的容量」，算不出真正的 availability
+> （見 [methodology.md](methodology.md)）。資料庫已用 `004_remove_availability.sql` 移除相關欄位，
+> `availability.py` 改名為 `capacity_factor.py`。
+>
 > 已確認的決定：先用 Free 方案試；「環保限制」→ 部分停機、「測試運轉」→ 試運轉；
 > GitHub Actions 改成「備援＋警報」。
 
