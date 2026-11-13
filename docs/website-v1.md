@@ -65,17 +65,30 @@
 
 | 檔案 | 用途 |
 |---|---|
-| `site/index.html` | 頁面的骨架 |
+| `site/index.html` | 頁面的骨架：標題、語言切換、時間範圍、頁尾 |
 | `site/css/style.css` | 外觀（顏色、排版；淺色和深色模式） |
 | `site/js/config.js` | Supabase 的網址和公開金鑰、多久更新一次 |
 | `site/js/api.js` | 向 Supabase 讀資料（只呼叫 `api_` 函式） |
 | `site/js/i18n.js` | 介面文字的中英文對照 |
-| `site/js/app.js` | 主程式：讀資料、算數字、畫圖表和表格 |
+| `site/js/app.js` | 主程式：依網址決定顯示哪一頁、讀資料、每 3 分鐘自動更新 |
+| `site/js/views/overview.js` | 總覽頁 |
+| `site/js/views/category.js` | 能源類型頁 |
+| `site/js/views/unit.js` | 機組頁 |
+| `site/js/charts.js` | 共用的圖表：堆疊面積圖、單一曲線圖、狀態色帶、小趨勢線 |
+| `site/js/model.js` | 從資料裡查分類的顏色、狀態和備註的名稱 |
+| `site/js/util.js` | 共用的小工具（數字格式、時間格式） |
 
-目前完成的是**總覽頁**：四個重點數字、堆疊面積圖、能源類型表、機組表，
-可切換 24 小時／7 天、中文／英文，每 3 分鐘自動更新。
+三種頁面，由網址最後的 `#` 決定，可以加書籤、可以分享：
 
-還沒做：30 天與 1 年的範圍、能源類型頁、機組頁。
+| 頁面 | 網址 | 內容 |
+|---|---|---|
+| 總覽 | `…/taiwan-renewables/` | 四個重點數字、各能源堆疊面積圖、能源類型表 |
+| 能源類型頁 | `…/#category-wind_offshore` | 該類型的發電量曲線（加上裝置容量參考線）、機組表 |
+| 機組頁 | `…/#unit-173` | 發電量曲線、和時間軸對齊的狀態色帶、每日紀錄 |
+
+能源類型的代號見 `docs/database.md` 的 `categories` 表；機組編號是 `units.id`。
+
+時間範圍目前有 24 小時和 7 天；30 天和 1 年等資料累積後開放。
 
 在自己電腦上預覽：在專案資料夾執行 `python3 -m http.server 8000 --directory site`，
 然後用瀏覽器打開 `http://localhost:8000`。
