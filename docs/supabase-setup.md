@@ -17,6 +17,7 @@
 | `supabase/migrations/004_remove_availability.sql` | 移除 availability 欄位（步驟 5.7，只有執行過舊版 003 的資料庫需要） |
 | `supabase/migrations/005_website_api.sql` | 網站需要的分類、英文名稱、彙總和讀資料的函式（步驟 5.8） |
 | `supabase/migrations/006_show_remarks.sql` | 「合約限制」等備註直接顯示原文（步驟 5.9） |
+| `supabase/migrations/007_trim_early_data.sql` | 排除 2026-11-13 00:00 之前的資料（步驟 5.10） |
 | `supabase/make_import_sql.py` | 重新產生 `import_raw.sql` 的程式 |
 | `backup_collect.py` + `.github/workflows/collect.yml` | GitHub Actions 的備援收集＋警報（步驟 6） |
 
@@ -81,6 +82,9 @@
 最可能的問題是台電擋掉 Supabase 主機的連線，那就要換別的方法，請先不要繼續下一步。
 
 ## 步驟 5：匯入舊資料
+
+> 2026-11-13 更新：資料改從 2026-11-13 00:00 開始，之前的資料已決定排除（見步驟 5.10）。
+> `make_import_sql.py` 現在只會匯入這個時間之後的資料；`data/raw` 的原始檔都在這之前，所以這個步驟已經不需要了。
 
 `supabase/import_raw.sql` 是 repo 裡 `data/raw` 全部原始檔轉成的 SQL。
 
@@ -156,6 +160,11 @@ select created, status_code, content from net._http_response order by created de
 
 它會建立能源分類、機組的英文名稱、每 10 分鐘的類型彙總，以及給網站讀資料的 `api_` 函式。
 說明見 [database.md](database.md)。
+
+## 步驟 5.10：排除 2026-11-13 00:00 之前的資料
+
+執行 `supabase/migrations/007_trim_early_data.sql`：貼到 SQL Editor（**下拉選單選 Database**），按 **Run**。
+最後一行會顯示「最早的資料時間」，應該是 `2026-11-13 00:00:00+08`。
 
 ## 步驟 5.9：備註直接顯示原文
 
