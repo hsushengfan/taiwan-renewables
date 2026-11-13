@@ -7,9 +7,12 @@
 //      （整理規則只寫在資料庫裡，見 supabase/migrations/001_schema.sql）
 //   3. 原始 JSON 壓縮後存到 Storage 的 raw/2026-11-10/1140.json.gz
 //      （和以前 data/raw 的路徑一樣；已經存過就略過）
-//   4. 失敗的話在 collection_runs 記一筆
+//   4. 收到新的時間點時，向 Healthchecks.io 報到（警報用，見下方說明）
+//   5. 失敗的話在 collection_runs 記一筆
 //
 // SUPABASE_URL 和 SUPABASE_SERVICE_ROLE_KEY 是 Supabase 自動提供的，不用自己設定。
+// HEALTHCHECK_URL 要自己在 Supabase 網站設定（Edge Functions → Secrets），
+// 不寫在程式碼裡，因為這個 repo 是公開的：別人拿到這個網址就能假裝報到，讓警報失效。
 // =====================================================================
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -18,6 +21,8 @@ const TAIPOWER_URL =
   "https://service.taipower.com.tw/data/opendata/apply/file/d006001/001.json";
 const RETRIES = 2; // 失敗後再試幾次
 const SOURCE = "supabase";
+
+const HEALTHCHECK_URL = Deno.env.get("HEALTHCHECK_URL");
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -69,6 +74,24 @@ async function saveRaw(raw: { DateTime: string }): Promise<string> {
   return `原始檔存檔失敗：${error.message}`;
 }
 
+// 向 Healthchecks.io 報到：「又收到一筆新資料了」。
+// Healthchecks.io 那邊設定成「超過 40 分鐘沒報到就寄信」，所以只要收集停了
+// （不管是程式壞了、Supabase 被暫停、還是台電沒更新），都會收到通知。
+// 報到失敗不算整次失敗：最重要的是資料庫有存到。
+async function pingHealthcheck(message: string): Promise<string> {
+  if (!HEALTHCHECK_URL) return "沒有設定 HEALTHCHECK_URL，略過報到";
+  try {
+    const resp = await fetch(HEALTHCHECK_URL, {
+      method: "POST",
+      body: message,
+      signal: AbortSignal.timeout(10_000),
+    });
+    return resp.ok ? "已向 Healthchecks.io 報到" : `報到失敗：HTTP ${resp.status}`;
+  } catch (e) {
+    return `報到失敗：${e}`;
+  }
+}
+
 Deno.serve(async () => {
   try {
     const raw = await fetchTaipower();
@@ -77,7 +100,11 @@ Deno.serve(async () => {
     if (error) throw new Error(`寫入資料庫失敗：${error.message}`);
 
     const rawNote = await saveRaw(raw);
-    const result = { ok: true, ...data, raw: rawNote };
+    // 只有收到「新的」時間點才報到；同一個時間點重複抓到（rows_inserted 是 0）不算
+    const healthcheck = data.rows_inserted > 0
+      ? await pingHealthcheck(`${data.data_time} 新增 ${data.rows_inserted} 列`)
+      : "不是新的時間點，不用報到";
+    const result = { ok: true, ...data, raw: rawNote, healthcheck };
     console.log(JSON.stringify(result));
     return Response.json(result);
   } catch (e) {
