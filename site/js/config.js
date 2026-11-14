@@ -12,4 +12,4 @@ export const REFRESH_MS = 3 * 60 * 1000;
 // 瀏覽人數統計（GoatCounter）。填入你在 goatcounter.com 註冊的網站代號，
 // 例如註冊的網址是 https://twpower.goatcounter.com，這裡就填 "twpower"。
 // 空字串＝不統計。
-export const GOATCOUNTER_CODE = "";
+export const GOATCOUNTER_CODE = "twpower";

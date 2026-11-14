@@ -100,7 +100,7 @@
 
 **瀏覽人數統計**：用 GoatCounter（不使用 cookie、不記錄可辨識個人的資訊）。
 每個頁面分開記錄（例如 `/taiwan-renewables/#unit-173`）；切換語言、切換時間範圍記錄成 Events
-（`lang-en`、`range-7d` 等）。在 `https://<網站代號>.goatcounter.com` 查看。
+（`lang-en`、`range-7d` 等）。在 <https://twpower.goatcounter.com> 查看。
 
 在自己電腦上預覽：在專案資料夾執行 `python3 -m http.server 8000 --directory site`，
 然後用瀏覽器打開 `http://localhost:8000`。
