@@ -18,6 +18,7 @@ import * as overview from "./views/overview.js";
 import * as category from "./views/category.js";
 import * as unit from "./views/unit.js";
 import * as about from "./views/about.js";
+import { initAnalytics, trackPage, trackEvent } from "./analytics.js";
 
 // 時間範圍：往回看幾小時、用哪種粒度
 const RANGES = { "24h": { hours: 24, bucket: "10min" }, "7d": { hours: 24 * 7, bucket: "10min" } };
@@ -69,6 +70,7 @@ async function load({ refresh = false } = {}) {
     delete $("#banner").dataset.keep;
     render();
     if (changedPage) window.scrollTo(0, 0);
+    trackPage(document.title);       // 瀏覽人數統計（同一頁只記一次）
   } catch (err) {
     if (id !== state.loadId) return;
     console.error(err);
@@ -109,9 +111,9 @@ function render() {
 // =====================================================================
 // 使用者的操作
 // =====================================================================
-document.querySelectorAll("[data-lang]").forEach((b) => { b.onclick = () => { setLang(b.dataset.lang); render(); }; });
+document.querySelectorAll("[data-lang]").forEach((b) => { b.onclick = () => { setLang(b.dataset.lang); render(); trackEvent("lang-" + b.dataset.lang); }; });
 document.querySelectorAll("#ranges button").forEach((b) => {
-  b.onclick = () => { if (!RANGES[b.dataset.range]) return; state.range = b.dataset.range; render(); load(); };
+  b.onclick = () => { if (!RANGES[b.dataset.range]) return; state.range = b.dataset.range; render(); load(); trackEvent("range-" + b.dataset.range); };
 });
 window.addEventListener("hashchange", load);
 let resizeTimer, lastWidth = innerWidth;
@@ -126,6 +128,7 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if
 // =====================================================================
 // 開始
 // =====================================================================
+initAnalytics();                                                            // 瀏覽人數統計（有設定代號才會啟動）
 render();                                                                   // 先把介面文字放上去
 load();                                                                     // 讀第一次資料
 setInterval(() => { if (!document.hidden) load({ refresh: true }); }, REFRESH_MS);           // 之後每 3 分鐘檢查一次
