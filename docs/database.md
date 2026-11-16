@@ -349,6 +349,7 @@ select refresh_category_readings();
 - **價格一律存未稅值。** 網站顯示含稅時才乘 1.05。每度售電成本沒有含稅的概念，不會跟著切換。
 - **給人看的文字拆成 `_zh`、`_en` 兩欄**（例如 `summary_zh`、`summary_en`）。
 - **要更新數字時**：改 `010_electricity_price.sql` 的數字，整份再執行一次（已有的資料會被更新）。
+  應有單價的歷年資料和 `is_derived` 欄位在 `011_required_unit_price_history.sql`；之後新增場次可以照它的格式加一列再執行。
 - 5 張表都開了 RLS、沒有開放規則，網站只能透過 `api_price()`、`api_wheeling()` 讀（見第 7 節）。
 
 #### `avg_unit_prices`：歷年平均單價
@@ -416,7 +417,7 @@ select refresh_category_readings();
 
 #### `required_unit_prices`：應有單價
 
-- **一筆資料代表**：一場電價審議會上，台電依電價公式估算的應有單價。目前 2 筆，其餘之後補。
+- **一筆資料代表**：一場電價審議會上，台電依電價公式估算的應有單價。2015 年起共 23 筆（`011_required_unit_price_history.sql`）。
 - 應有單價是足以反映成本與合理利潤的電價水準，是**提報審議會的估計值，不是實際電價**。
 
 | 欄位 | 意思 | 單位／格式 |
@@ -424,7 +425,8 @@ select refresh_category_readings();
 | `meeting_date` | 審議會日期 | 日期 |
 | `period_label_zh` / `_en` | 期間，例如「114 年下半年」／「H2 2025」 | 文字 |
 | `required_price` | 應有單價 | **元/度，未稅** |
-| `base_price` | 同一頁簡報載明的基準（現行）電價，沒寫就是空值 | 元/度，未稅 |
+| `base_price` | 同一份簡報載明的基準（現行）電價，沒寫就是空值 | 元/度，未稅 |
+| `is_derived` | `true`＝簡報上的數字是圖片讀不到，用「合計成本 ÷ 售電量」推算（112～113 年 4 場） | 是／否 |
 | `source_url` | 該場審議會的會議資料頁 | 網址 |
 
 ---

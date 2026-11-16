@@ -36,6 +36,17 @@ jobs:
       - name: 準備 GitHub Pages
         uses: actions/configure-pages@v5
 
+      # 瀏覽器會把 .js、.css 暫存一陣子。網站更新後，如果新的 index.html 配上暫存的舊程式，
+      # 就會出現「新按鈕點了沒反應、跳回首頁」之類的問題。
+      # 這一步在每個檔名後面加上這次的版本號（例如 app.js?v=1a2b3c4d），
+      # 版本號一變，瀏覽器就知道要重新下載。只改要發布的那一份，不會改到 repo 裡的檔案。
+      - name: 加上版本號（避免瀏覽器用到舊的程式）
+        run: |
+          v="${GITHUB_SHA::8}"
+          find site -name '*.js' -exec sed -i -E "s#(from \"\.{1,2}/[^\"]+\.js)\"#\1?v=$v\"#g" {} +
+          sed -i -E "s#src=\"js/app\.js\"#src=\"js/app.js?v=$v\"#; s#href=\"css/style\.css\"#href=\"css/style.css?v=$v\"#" site/index.html
+          grep -c "?v=$v" site/index.html site/js/app.js
+
       - name: 打包 site 資料夾
         uses: actions/upload-pages-artifact@v3
         with:

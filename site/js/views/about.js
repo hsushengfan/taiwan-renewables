@@ -98,6 +98,7 @@ const CONTENT = {
     <li><b>平均單價</b>＝電費收入 ÷ 售電度數，是實績，不是電價表上的牌價。來源：台電「歷年平均單價」。</li>
     <li><b>每度售電成本</b>由三個官方來源拼接（立法院預算中心、監察院報告、台電「電價及單位成本結構比較」），各年來源不同；2023 年只有 2 位小數，照原精度顯示。</li>
     <li><b>轉供費率</b>來自能源署電價及費率審議資訊揭露專區。2026 年官方公告的是含稅值，分項是除以 1.05 的換算值。</li>
+    <li><b>應有單價</b>是台電依電價公式估算的電價水準（提報審議會的估計值，不是實際電價），從能源署電價費率審議會各場的台電簡報逐場整理，2015 年起共 23 場。112～113 年的 4 場，簡報上的數字是圖片，改用同一份簡報的「合計成本 ÷ 售電量」推算。2017 年沒有提報；2015–2016 年用的是舊的電價公式。</li>
     <li><b>含稅或未稅：</b>資料一律存未稅值，含稅＝未稅 × 1.05。台電沒有明文寫平均單價是否含稅，本站依三項證據判斷為未稅：(1) 和決算表的「每度平均電價」幾乎相同，而決算的營業收入不含營業稅；(2) 審議會公布的平均電價和電價表的含稅價差約 5%；(3) 輸配電費率公式明文寫「計算結果不含營業稅，公告時自行計入」。每度售電成本沒有含稅的概念，不隨切換改變。</li>
     <li><b>更新頻率：</b>平均單價每年、售電成本每月、轉供費率每年 12 月、電價調整每年 3 月與 9 月審議後。</li>
   </ul>
@@ -194,6 +195,7 @@ const CONTENT = {
     <li><b>Average unit price</b> = electricity revenue ÷ kWh sold. It is an actual result, not a tariff rate. Source: Taipower, average unit price by year.</li>
     <li><b>Unit cost of electricity sold</b> is combined from three official sources (Legislative Yuan Budget Center, Control Yuan report, and Taipower's comparison of price and unit cost structure), so the source differs by year. The 2023 figure has only two decimal places and is shown as published.</li>
     <li><b>Wheeling rates</b> come from the Energy Administration's electricity price and rate review disclosures. The 2026 figures were published including tax; the components are divided by 1.05.</li>
+    <li><b>Required unit price</b> is Taipower's estimate of the price level under the price formula (submitted to the review committee; not an actual price). It is compiled meeting by meeting from Taipower's slides for each Energy Administration price review meeting since 2015 (23 meetings). For four meetings in 2023–2024 the slides show the figure only as an image, so it is calculated from the same slides as total cost ÷ electricity sold. No figure was submitted in 2017, and 2015–2016 used the old price formula.</li>
     <li><b>Including or excluding tax:</b> all figures are stored excluding tax; including tax = excluding tax × 1.05. Taipower does not state whether the average unit price includes tax. This site treats it as excluding tax based on three pieces of evidence: (1) it almost matches the "average price per kWh" in the final accounts, whose operating revenue excludes business tax; (2) the average price published by the review committee is about 5% below the tax-inclusive tariff; (3) the wheeling rate formula states that "results exclude business tax, which is added when the rates are announced". The unit cost has no tax component and does not change with the toggle.</li>
     <li><b>Update frequency:</b> average unit price yearly, unit cost monthly, wheeling rates every December, price adjustments after the March and September reviews.</li>
   </ul>
