@@ -387,7 +387,7 @@ export function stackedBars(container, { xs, layers, totals, label, format }) {
   });
   yearHover(g, xs, (i) => [...layers].reverse().filter((l) => l.values[i] != null)
     .map((l) => [l.label, format(l.values[i]), l.color])
-    .concat(totals[i] != null ? [["Σ", format(totals[i]), null]] : []));
+    .concat(totals[i] != null ? [[t("total"), format(totals[i]), null]] : []));
 }
 
 // ---------------------------------------------------------------------

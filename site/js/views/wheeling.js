@@ -1,0 +1,151 @@
+// 轉供費率頁（#wheeling）
+//
+//   1. 堆疊長條圖：歷年平均轉供費率的四項組成，長條頂端標合計
+//   2. 折線圖：平均費率合計 vs 再生能源（不排碳）費率合計
+//   3. 表格：兩種費率的完整數字（換算值加註）
+//   4. 說明：四項費用是什麼、誰要付哪幾項
+//
+// 資料是人工整理的（見 supabase/migrations/010_electricity_price.sql），用 api_wheeling() 讀。
+// 資料庫存的是未稅值；這一頁預設顯示未稅。
+
+import { getWheeling } from "../api.js";
+import { t, getLang } from "../i18n.js";
+import { el, cssVar } from "../util.js";
+import { lineChart, stackedBars } from "../charts.js";
+import { taxMode, applyTax, taxLabel, taxToggle } from "../tax.js";
+import { downloadButton, cardFoot } from "../download.js";
+import { crumbs } from "./category.js";
+
+export const autoRefresh = false;
+export const showFilters = false;
+
+const PARTS = [["ancillary", "whAncillary", "--g4"], ["dispatch", "whDispatch", "--g2"],
+  ["transmission", "whTransmission", "--g3"], ["distribution", "whDistribution", "--g6"]];
+
+export async function load() {
+  return { wheeling: await getWheeling() };
+}
+
+const pick = (row, base) => (getLang() === "en" && row[base + "_en"]) || row[base + "_zh"] || "";
+const fix = (v) => (v == null ? "—" : v.toFixed(4));
+const fileTax = (mode) => (mode === "incl" ? "incl-tax" : "excl-tax");
+// 年份清單：中文用頓號、英文用逗號，例如「2018、2021、2024」／「2018, 2021, 2024」
+const years2text = (ys) => ys.join(getLang() === "en" ? ", " : "、");
+
+export function render(root, ctx, data) {
+  const rates = data.wheeling.rates;
+  const mode = taxMode("excl");
+  const tax = taxLabel(mode);
+  const rerender = () => render(root, ctx, data);
+
+  const avg = rates.filter((r) => r.fuel_type === "average");
+  const re = rates.filter((r) => r.fuel_type === "re_zero_carbon");
+  const years = rates.map((r) => r.year);
+  const xs = Array.from({ length: Math.max(...years) - Math.min(...years) + 1 }, (_, i) => Math.min(...years) + i);
+  const row = (list, yr) => list.find((r) => r.year === yr) || null;
+  const lastYear = Math.max(...years);
+  const src = rates[0] ? [[pick(rates[0], "source"), rates[0].source_url]] : [];
+  const updated = t("whUpdated", lastYear);
+  const derivedYears = [...new Set(rates.filter((r) => r.is_derived).map((r) => r.year))];
+
+  const head = el("div", { className: "pagehead row" }, [
+    el("div", {}, [crumbs([[t("navOverview"), "#"], [t("wheelingTitle")]]), el("h2", { className: "pagetitle", textContent: t("wheelingTitle") })]),
+    taxToggle(mode, rerender),
+  ]);
+
+  // ---- 1. 堆疊長條圖 ----
+  const avgXs = xs.filter((yr) => row(avg, yr));
+  const stackBox = el("div");
+  const stackLegend = legend(PARTS.map(([, k, c]) => [t(k), cssVar(c), "box"]));
+  const stackCsv = () => [
+    [t("whCols", tax)[0], ...PARTS.map(([, k]) => `${t(k)} (${t("perKwh")}, ${tax})`), `${t("total")} (${t("perKwh")}, ${tax})`, t("whDerived")],
+    ...avgXs.map((yr) => { const r = row(avg, yr); return [yr, ...PARTS.map(([f]) => fix(applyTax(r[f], mode))), fix(applyTax(r.total, mode)), r.is_derived ? t("yes") : ""]; }),
+  ];
+  const stackCard = el("section", { className: "card" }, [
+    el("div", { className: "cardhead" }, [el("h2", { textContent: t("whStackTitle", tax) })]),
+    stackLegend, stackBox,
+    derivedYears.length ? el("p", { className: "note", textContent: t("whDerivedYears", years2text(derivedYears)) }) : "",
+    cardFoot(src, updated, downloadButton(`taiwan-wheeling-rate-components-${fileTax(mode)}.csv`, stackCsv)),
+  ]);
+
+  // ---- 2. 折線圖：平均 vs 再生能源 ----
+  const lineBox = el("div");
+  const totalSeries = (list, label, colorVar) => ({
+    label, color: cssVar(colorVar),
+    values: xs.map((yr) => applyTax(row(list, yr)?.total ?? null, mode)),
+    format: (v) => `${fix(v)} ${t("perKwh")}`,
+  });
+  const lineSeries = [totalSeries(avg, t("whAverage"), "--g4"), totalSeries(re, t("whRe"), "--g7")];
+  const lineLegend = legend(lineSeries.map((s) => [s.label, s.color]));
+  // 凸顯再生能源費率的上升：從 2022 年（或有資料的最早一年）到最新一年
+  const reYears = re.map((r) => r.year);
+  const from = row(re, 2022) || row(re, Math.min(...reYears)), to = row(re, Math.max(...reYears));
+  const rise = from && to && from !== to
+    ? t("whRise", from.year, fix(applyTax(from.total, mode)), to.year, fix(applyTax(to.total, mode)), (to.total / from.total).toFixed(1))
+    : "";
+  const missing = xs.filter((yr) => !row(re, yr));
+  const lineCsv = () => [
+    [t("whCols", tax)[0], `${t("whAverage")} (${t("perKwh")}, ${tax})`, `${t("whRe")} (${t("perKwh")}, ${tax})`],
+    ...xs.map((yr) => [yr, row(avg, yr) ? fix(applyTax(row(avg, yr).total, mode)) : "", row(re, yr) ? fix(applyTax(row(re, yr).total, mode)) : ""]),
+  ];
+  const lineCard = el("section", { className: "card" }, [
+    el("div", { className: "cardhead" }, [el("h2", { textContent: t("whLineTitle", tax) })]),
+    lineLegend, lineBox,
+    rise ? el("p", { className: "lead", textContent: rise }) : "",
+    missing.length ? el("p", { className: "note", textContent: t("whGapNote", years2text(missing)) }) : "",
+    cardFoot(src, updated, downloadButton(`taiwan-wheeling-rate-totals-${fileTax(mode)}.csv`, lineCsv)),
+  ]);
+
+  // ---- 3. 表格 ----
+  const cols = t("whCols", tax);
+  const sorted = [...avg, ...re];
+  const tableRows = sorted.map((r) => {
+    const name = el("td", { className: "c", textContent: r.fuel_type === "average" ? t("whAverage") : t("whRe") });
+    if (r.is_derived) name.append(el("span", { className: "badge", textContent: t("whDerived") }));
+    return el("tr", {}, [
+      el("td", { textContent: r.year }), name,
+      ...PARTS.map(([f]) => el("td", { textContent: fix(applyTax(r[f], mode)), className: r[f] == null ? "dim" : "" })),
+      el("td", { textContent: fix(applyTax(r.total, mode)) }),
+    ]);
+  });
+  const tableCsv = () => [[...cols.map((c, i) => (i >= 2 ? `${c} (${t("perKwh")}, ${tax})` : c)), t("whDerived")], ...sorted.map((r) => [r.year, r.fuel_type === "average" ? t("whAverage") : t("whRe"),
+    ...PARTS.map(([f]) => (r[f] == null ? "" : fix(applyTax(r[f], mode)))), fix(applyTax(r.total, mode)), r.is_derived ? t("yes") : ""])];
+  const tableCard = el("section", { className: "card" }, [
+    el("div", { className: "cardhead" }, [el("h2", { textContent: t("whTableTitle", tax) })]),
+    el("div", { className: "scroll" }, [el("table", {}, [
+      el("thead", {}, [el("tr", {}, cols.map((c, i) => el("th", { textContent: c, className: i === 1 ? "c" : "" })))]),
+      el("tbody", {}, tableRows),
+    ])]),
+    derivedYears.length ? el("p", { className: "note", textContent: t("whDerivedNote") }) : "",
+    rates.some((r) => r.ancillary == null) ? el("p", { className: "note", textContent: t("whPartialNote") }) : "",
+    cardFoot(src, updated, downloadButton(`taiwan-wheeling-rates-${fileTax(mode)}.csv`, tableCsv)),
+  ]);
+
+  // ---- 4. 說明 ----
+  const explain = el("section", { className: "card prose" }, [
+    el("h3", { textContent: t("whExplainTitle") }),
+    el("dl", { className: "deflist" }, t("whExplain").flatMap(([k, v]) => [el("dt", { textContent: k }), el("dd", { textContent: v })])),
+    el("h3", { textContent: t("whWhoPaysTitle") }),
+    el("ul", {}, t("whWhoPays").map((s) => el("li", { textContent: s }))),
+  ]);
+
+  root.replaceChildren(head, stackCard, lineCard, tableCard, explain);
+  requestAnimationFrame(() => {
+    stackedBars(stackBox, {
+      xs: avgXs, label: t("whStackLabel"),
+      layers: PARTS.map(([f, k, c]) => ({ label: t(k), color: cssVar(c), values: avgXs.map((yr) => applyTax(row(avg, yr)[f], mode)) })),
+      totals: avgXs.map((yr) => applyTax(row(avg, yr).total, mode)),
+      format: fix,
+    });
+    lineChart(lineBox, { xs, series: lineSeries, label: t("whLineLabel") });
+  });
+}
+
+// 圖例：[[名稱, 顏色, "box"（方塊）或省略（線）], ...]
+function legend(items) {
+  return el("div", { className: "legend static" }, items.map(([label, color, kind]) => {
+    const k = el("i", { className: "k" + (kind === "box" ? " box" : "") });
+    k.style.setProperty("--c", color);
+    return el("span", { className: "lg" }, [k, document.createTextNode(label)]);
+  }));
+}
