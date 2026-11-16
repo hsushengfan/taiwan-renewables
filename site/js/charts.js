@@ -41,15 +41,17 @@ function setup(container, { times, from, extraBottom = 0 }) {
 }
 
 // 縱軸：算出好讀的刻度（0、5,000、10,000…），畫橫向格線
-function yAxis(g, min, max) {
-  const span = Math.max(max - min, 1);
-  const step = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000].find((s) => span / s <= 6) || 10000;
+//   small：數字很小時（例如電價 0～5 元、轉供費率 0～1 元）也用 0.1、0.2、0.5 這種刻度
+function yAxis(g, min, max, { small = false } = {}) {
+  const span = small ? Math.max(max - min, 0.01) : Math.max(max - min, 1);
+  const steps = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+  const step = steps.filter((s) => small || s >= 1).find((s) => span / s <= 6) || 10000;
   const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step || step;
   const y = (v) => M.t + g.ih - ((v - lo) / (hi - lo)) * g.ih;
-  for (let v = lo; v <= hi + step / 2; v += step) {
-    g.svg.append(svgEl("line", { x1: M.l, x2: g.W - M.r, y1: y(v), y2: y(v), stroke: cssVar(v === 0 ? "--axis" : "--grid"), "stroke-width": 1 }));
+  for (let n = 0, v = lo; v <= hi + step / 2; n++, v = lo + n * step) {
+    g.svg.append(svgEl("line", { x1: M.l, x2: g.W - M.r, y1: y(v), y2: y(v), stroke: cssVar(Math.abs(v) < step / 2 ? "--axis" : "--grid"), "stroke-width": 1 }));
     const label = svgEl("text", { x: M.l - 8, y: y(v) + 4, "text-anchor": "end" });
-    label.textContent = Math.abs(hi) >= 10000 ? v / 1000 + "K" : v.toLocaleString();
+    label.textContent = Math.abs(hi) >= 10000 ? v / 1000 + "K" : Number(v.toFixed(4)).toLocaleString();
     g.svg.append(label);
   }
   return y;
@@ -254,4 +256,218 @@ export function statusStrip(statuses, labels, times) {
   }
   svg.setAttribute("aria-label", Object.entries(counts).map(([l, c]) => `${l} ${Math.round((c / n) * 100)}%`).join(", "));
   return svg;
+}
+
+// =====================================================================
+// 以「年」為橫軸的圖（電價走勢頁、轉供費率頁）
+// =====================================================================
+
+// 共用：外框和橫軸。xs 是年份陣列，例如 [2002, 2003, …, 2026]
+function setupYears(container, xs, { band = false } = {}) {
+  container.classList.add("chart");
+  const svg = svgEl("svg", { role: "img" });
+  const tip = el("div", { className: "tip", hidden: true });
+  container.replaceChildren(svg, tip);
+  const W = container.clientWidth || 800;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.style.height = H + "px";
+  const iw = W - M.l - M.r, ih = H - M.t - M.b;
+  // band：長條圖，每一年佔一格、長條畫在格子中間；折線圖則是第一年在最左、最後一年在最右
+  const slot = band ? iw / xs.length : iw / Math.max(xs.length - 1, 1);
+  const x = (i) => M.l + (band ? (i + 0.5) * slot : i * slot);
+  // 年份標籤：太擠的時候每 2 年或每 5 年標一次
+  const every = [1, 2, 5, 10].find((n) => slot * n >= 34) || 10;
+  xs.forEach((yr, i) => {
+    if (yr % every !== 0 && !(every === 1)) return;
+    // 最右邊的標籤靠右對齊，才不會被切掉一半
+    const atEdge = x(i) > W - M.r - 14;
+    const label = svgEl("text", { x: atEdge ? W - 2 : x(i), y: H - 8, "text-anchor": atEdge ? "end" : "middle" });
+    label.textContent = String(yr);
+    svg.append(label);
+  });
+  return { svg, tip, W, iw, ih, x, slot };
+}
+
+// 年度的提示框：滑鼠在哪一年，就顯示那一年的數字
+function yearHover(g, xs, rowsAt) {
+  const cross = svgEl("line", { y1: M.t, y2: M.t + g.ih, stroke: cssVar("--ink2"), "stroke-width": 1, visibility: "hidden" });
+  g.svg.append(cross);
+  const show = (clientX) => {
+    const rect = g.svg.getBoundingClientRect();
+    const px = ((clientX - rect.left) / rect.width) * g.W;
+    let i = 0;
+    for (let k = 1; k < xs.length; k++) if (Math.abs(g.x(k) - px) < Math.abs(g.x(i) - px)) i = k;
+    cross.setAttribute("x1", g.x(i)); cross.setAttribute("x2", g.x(i)); cross.setAttribute("visibility", "visible");
+    g.tip.replaceChildren(el("div", { className: "t", textContent: String(xs[i]) }));
+    rowsAt(i).forEach(([label, value, color, dashed]) => {
+      const left = el("span");
+      const k = el("i", { className: "k" + (dashed ? " dashed" : "") });
+      if (color) { k.style.background = color; left.append(k); }
+      left.append(document.createTextNode(label));
+      g.tip.append(el("div", { className: "r" }, [left, el("b", { textContent: value })]));
+    });
+    g.tip.hidden = false;
+    const scale = rect.width / g.W, w = g.tip.offsetWidth;
+    const left = g.x(i) * scale + 12 + w > rect.width ? g.x(i) * scale - 12 - w : g.x(i) * scale + 12;
+    g.tip.style.left = Math.max(0, left) + "px";
+  };
+  const hide = () => { g.tip.hidden = true; cross.setAttribute("visibility", "hidden"); };
+  g.svg.addEventListener("pointermove", (e) => show(e.clientX));
+  g.svg.addEventListener("pointerdown", (e) => show(e.clientX));
+  g.svg.addEventListener("pointerleave", hide);
+}
+
+// ---------------------------------------------------------------------
+// 年度折線圖
+//   series：[{ label, color, values（和 xs 對齊，沒有資料是 null）, dashed（虛線）,
+//              hollow（Set，哪幾個點畫成空心）, format(值, 第幾年) → 提示框裡的文字 }]
+//   縱軸從 0 開始，才不會誇大變化。
+// ---------------------------------------------------------------------
+export function lineChart(container, { xs, series, label }) {
+  const g = setupYears(container, xs);
+  g.svg.setAttribute("aria-label", label);
+  const all = series.flatMap((s) => s.values.filter((v) => v != null));
+  const y = yAxis(g, 0, Math.max(...all, 0.01), { small: true });
+  const surface = cssVar("--surface");
+
+  series.forEach((s) => {
+    // 線：連續有資料的年份連起來
+    let pts = [];
+    const flush = () => {
+      if (pts.length > 1) g.svg.append(svgEl("polyline", {
+        points: pts.join(" "), fill: "none", stroke: s.color, "stroke-width": 2,
+        "stroke-linejoin": "round", "stroke-linecap": "round", ...(s.dashed ? { "stroke-dasharray": "6 4" } : {}),
+      }));
+      pts = [];
+    };
+    s.values.forEach((v, i) => { if (v == null) flush(); else pts.push(`${g.x(i).toFixed(1)},${y(v).toFixed(1)}`); });
+    flush();
+    // 點：每一年一個，空心點代表還不是完整一年的數字
+    s.values.forEach((v, i) => {
+      if (v == null) return;
+      const hollow = s.hollow?.has(i);
+      g.svg.append(svgEl("circle", {
+        cx: g.x(i), cy: y(v), r: hollow ? 4.5 : 3,
+        fill: hollow ? surface : s.color, stroke: hollow ? s.color : surface, "stroke-width": hollow ? 2 : 1.5,
+      }));
+    });
+  });
+
+  yearHover(g, xs, (i) => series.filter((s) => s.values[i] != null)
+    .map((s) => [s.label, s.format(s.values[i], i), s.color, s.dashed]));
+}
+
+// ---------------------------------------------------------------------
+// 堆疊長條圖（轉供費率頁）
+//   layers：由下往上 [{ label, color, values }]；totals：長條頂端標的合計（和 xs 對齊）
+//   format(值) → 提示框和頂端標籤的文字
+// ---------------------------------------------------------------------
+export function stackedBars(container, { xs, layers, totals, label, format }) {
+  const g = setupYears(container, xs, { band: true });
+  g.svg.setAttribute("aria-label", label);
+  const y = yAxis(g, 0, Math.max(...totals.filter((v) => v != null), 0.01) * 1.12, { small: true });
+  const bw = Math.min(28, g.slot * 0.6);
+  xs.forEach((_, i) => {
+    let base = 0;
+    layers.forEach((l, n) => {
+      const v = l.values[i];
+      if (v == null) return;
+      const top = base + v, last = n === layers.length - 1;
+      g.svg.append(svgEl("rect", {
+        x: g.x(i) - bw / 2, y: y(top), width: bw, height: Math.max(y(base) - y(top) - (last ? 0 : 1), 0.5),
+        fill: l.color, rx: last ? 2 : 0,
+      }));
+      base = top;
+    });
+    if (totals[i] != null) {
+      const t = svgEl("text", { x: g.x(i), y: y(totals[i]) - 6, "text-anchor": "middle", class: "barlabel" });
+      t.textContent = format(totals[i]);
+      g.svg.append(t);
+    }
+  });
+  yearHover(g, xs, (i) => [...layers].reverse().filter((l) => l.values[i] != null)
+    .map((l) => [l.label, format(l.values[i]), l.color])
+    .concat(totals[i] != null ? [["Σ", format(totals[i]), null]] : []));
+}
+
+// ---------------------------------------------------------------------
+// 調價時間軸
+//   events：[{ date: "2015-04-01", kind: "increase" | "decrease" | "freeze" | "deferred", title }]
+//   有調整（漲、降）的畫在上排，沒調整（不調整、延後）的畫在下排，點才不會擠在一起。
+//   形狀和顏色都不同（▲ 調漲、▼ 調降、● 不調整、◆ 延後），不會只靠顏色區分。
+//   lanes：上下兩排的名稱；onSelect(第幾個)：點了某個標記
+// ---------------------------------------------------------------------
+export const DECISION_STYLE = {
+  increase: { shape: "up", color: "--st-crit" },
+  decrease: { shape: "down", color: "--g4" },
+  freeze: { shape: "dot", color: "--muted" },
+  deferred: { shape: "diamond", color: "--st-warn" },
+};
+
+export function markerSvg(kind, size = 12) {
+  const svg = svgEl("svg", { width: size, height: size, viewBox: "-6 -6 12 12", "aria-hidden": "true", class: "marker" });
+  svg.append(markerShape(kind));
+  return svg;
+}
+
+function markerShape(kind, r = 5) {
+  const { shape, color } = DECISION_STYLE[kind];
+  const fill = cssVar(color);
+  if (shape === "up") return svgEl("path", { d: `M0 ${-r} L${r} ${r * 0.8} L${-r} ${r * 0.8} Z`, fill });
+  if (shape === "down") return svgEl("path", { d: `M0 ${r} L${r} ${-r * 0.8} L${-r} ${-r * 0.8} Z`, fill });
+  if (shape === "diamond") return svgEl("path", { d: `M0 ${-r} L${r} 0 L0 ${r} L${-r} 0 Z`, fill });
+  return svgEl("circle", { r: r * 0.8, fill });
+}
+
+export function timelineChart(container, { events, startYear, endYear, lanes, selected, onSelect }) {
+  container.classList.add("timeline");
+  const W = container.clientWidth || 800, TH = 112, L = 76, R = 16;
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${TH}`, role: "group" });
+  svg.style.height = TH + "px";
+  container.replaceChildren(svg);
+  const t0 = Date.UTC(startYear, 0, 1), t1 = Date.UTC(endYear + 1, 0, 1);
+  const x = (iso) => L + ((Date.parse(iso) - t0) / (t1 - t0)) * (W - L - R);
+  const laneY = [30, 66], axisY = 92;
+
+  // 兩排的名稱和橫線
+  lanes.forEach((name, n) => {
+    const tx = svgEl("text", { x: 0, y: laneY[n] + 4, class: "lane" });
+    tx.textContent = name;
+    svg.append(tx, svgEl("line", { x1: L, x2: W - R, y1: laneY[n], y2: laneY[n], stroke: cssVar("--grid"), "stroke-width": 1 }));
+  });
+  // 年份刻度
+  const perYear = (W - L - R) / (endYear - startYear + 1);
+  const every = perYear >= 34 ? 1 : perYear >= 17 ? 2 : 5;
+  svg.append(svgEl("line", { x1: L, x2: W - R, y1: axisY, y2: axisY, stroke: cssVar("--axis"), "stroke-width": 1 }));
+  for (let yr = startYear; yr <= endYear + 1; yr++) {
+    const px = x(`${yr}-01-01`);
+    svg.append(svgEl("line", { x1: px, x2: px, y1: axisY, y2: axisY + 4, stroke: cssVar("--axis"), "stroke-width": 1 }));
+    if (yr <= endYear && (yr - startYear) % every === 0) {
+      const label = svgEl("text", { x: x(`${yr}-07-01`), y: axisY + 16, "text-anchor": "middle" });
+      label.textContent = String(yr);
+      svg.append(label);
+    }
+  }
+  // 標記：每一個都可以點，也可以用鍵盤（Tab 移過去、Enter 選取）
+  // 可以點的範圍最大是半徑 11 像素，但不會超過和同一排鄰居距離的一半，
+  // 手機上標記很擠時，才不會點到隔壁那一個。
+  const lane = (ev) => (ev.kind === "increase" || ev.kind === "decrease" ? 0 : 1);
+  const hitR = events.map((ev, i) => {
+    let gap = Infinity;
+    events.forEach((o, j) => { if (j !== i && lane(o) === lane(ev)) gap = Math.min(gap, Math.abs(x(o.date) - x(ev.date))); });
+    return Math.max(4, Math.min(11, gap / 2));
+  });
+  events.forEach((ev, i) => {
+    const changed = lane(ev) === 0;
+    const gx = svgEl("g", { transform: `translate(${x(ev.date).toFixed(1)},${laneY[changed ? 0 : 1]})`, tabindex: 0, role: "button", class: "tl-mark" });
+    gx.setAttribute("aria-label", ev.title);
+    gx.setAttribute("aria-pressed", i === selected);
+    const title = svgEl("title");
+    title.textContent = ev.title;
+    if (i === selected) gx.append(svgEl("circle", { r: 10, fill: "none", stroke: cssVar("--ink"), "stroke-width": 1.5 }));
+    gx.append(svgEl("rect", { x: -hitR[i], y: -14, width: hitR[i] * 2, height: 28, fill: "transparent" }), markerShape(ev.kind, 6), title);
+    gx.addEventListener("click", () => onSelect(i));
+    gx.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(i); } });
+    svg.append(gx);
+  });
 }
