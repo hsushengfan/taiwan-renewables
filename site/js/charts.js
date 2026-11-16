@@ -402,6 +402,7 @@ export const DECISION_STYLE = {
   decrease: { shape: "down", color: "--g4" },
   freeze: { shape: "dot", color: "--muted" },
   deferred: { shape: "diamond", color: "--st-warn" },
+  none: { shape: "ring", color: "--muted" },   // 那一年沒有調價（2017），空心圓
 };
 
 export function markerSvg(kind, size = 12) {
@@ -416,6 +417,7 @@ function markerShape(kind, r = 5) {
   if (shape === "up") return svgEl("path", { d: `M0 ${-r} L${r} ${r * 0.8} L${-r} ${r * 0.8} Z`, fill });
   if (shape === "down") return svgEl("path", { d: `M0 ${r} L${r} ${-r * 0.8} L${-r} ${-r * 0.8} Z`, fill });
   if (shape === "diamond") return svgEl("path", { d: `M0 ${-r} L${r} 0 L0 ${r} L${-r} 0 Z`, fill });
+  if (shape === "ring") return svgEl("circle", { r: r * 0.7, fill: "none", stroke: fill, "stroke-width": 1.5 });
   return svgEl("circle", { r: r * 0.8, fill });
 }
 

@@ -122,11 +122,15 @@ function priceCard(d, mode, tax) {
 // 2. 調價時間軸
 // ---------------------------------------------------------------------
 function timelineCard(d, mode, tax) {
-  const evs = d.adjustments;
+  // 2017 年沒有調價：在時間軸的 2017 年放一個空心圓，點了才看到說明。
+  // 它不是真的一次審議結果，所以不放進下載的 CSV。
+  const adj = d.adjustments;
+  const evs = [...adj, { effective_date: "2017-07-01", decision: "none", gap: true }]
+    .sort((a, b) => a.effective_date.localeCompare(b.effective_date));
   if (selected == null || selected >= evs.length) selected = evs.length - 1;
   const decisionText = (ev) => t("decision")[ev.decision];
   const changeText = (ev) => (ev.decision === "increase" || ev.decision === "decrease" ? pct(ev.change_pct) : "0%");
-  const title = (ev) => `${ev.effective_date} ${decisionText(ev)} ${changeText(ev)}`;
+  const title = (ev) => (ev.gap ? t("no2017Short") : `${ev.effective_date} ${decisionText(ev)} ${changeText(ev)}`);
 
   const box = el("div");
   const detail = el("div", { className: "tl-detail" });
@@ -137,18 +141,25 @@ function timelineCard(d, mode, tax) {
 
   const draw = () => {
     const ev = evs[selected];
+    const prev = el("button", { type: "button", className: "chip", textContent: t("adjPrev"), disabled: selected === 0, onclick: () => { selected--; draw(); } });
+    const next = el("button", { type: "button", className: "chip", textContent: t("adjNext"), disabled: selected === evs.length - 1, onclick: () => { selected++; draw(); } });
     timelineChart(box, {
       events: evs.map((e) => ({ date: e.effective_date, kind: e.decision, title: title(e) })),
       startYear: Number(evs[0].effective_date.slice(0, 4)), endYear: Number(evs[evs.length - 1].effective_date.slice(0, 4)),
       lanes: [t("laneChanged"), t("laneUnchanged")], selected,
       onSelect: (i) => { selected = i; draw(); },
     });
+    if (ev.gap) {
+      detail.replaceChildren(
+        el("div", { className: "tl-head" }, [markerSvg("none", 14), el("b", { textContent: t("no2017Short") }), el("span", { className: "tl-nav" }, [prev, next])]),
+        el("p", { textContent: t("no2017") }),
+      );
+      return;
+    }
     const avgAfter = applyTax(ev.avg_price_after, mode);
     const row = (label, value) => el("div", { className: "kv" }, [el("dt", { textContent: label }), el("dd", {}, [value])]);
     const priceNode = el("span", { textContent: `${fix(avgAfter)} ${t("perKwh")}` });
     if (ev.avg_price_is_derived) priceNode.append(el("span", { className: "badge", textContent: t("derived") }));
-    const prev = el("button", { type: "button", className: "chip", textContent: t("adjPrev"), disabled: selected === 0, onclick: () => { selected--; draw(); } });
-    const next = el("button", { type: "button", className: "chip", textContent: t("adjNext"), disabled: selected === evs.length - 1, onclick: () => { selected++; draw(); } });
     detail.replaceChildren(
       el("div", { className: "tl-head" }, [markerSvg(ev.decision, 14), el("b", { textContent: `${decisionText(ev)}　${ev.effective_date}` }),
         el("span", { className: "tl-nav" }, [prev, next])]),
@@ -164,12 +175,12 @@ function timelineCard(d, mode, tax) {
     );
   };
 
-  const last = evs[evs.length - 1];
+  const last = adj[adj.length - 1];
   const csv = () => [
     getLang() === "en"
       ? ["Effective date", "Decision", "Average change (%)", `Average price after (${t("perKwh")}, ${tax})`, "Estimated", "Key points", "Taipower announcement"]
       : ["生效日", "決定", "平均調幅（%）", `調整後平均電價（${t("perKwh")}，${tax}）`, "推算", "重點", "台電公告"],
-    ...evs.map((e) => [e.effective_date, decisionText(e), e.change_pct == null ? "" : e.change_pct.toFixed(2),
+    ...adj.map((e) => [e.effective_date, decisionText(e), e.change_pct == null ? "" : e.change_pct.toFixed(2),
       fix(applyTax(e.avg_price_after, mode)), e.avg_price_is_derived ? (getLang() === "en" ? "yes" : "是") : "",
       pick(e, "summary"), e.announcement_url || ""]),
   ];
@@ -177,7 +188,6 @@ function timelineCard(d, mode, tax) {
   card.append(
     el("div", { className: "cardhead" }, [el("h2", { textContent: t("timelineTitle") }), el("span", { className: "sub", textContent: t("timelineHint") })]),
     legend, box, detail,
-    el("p", { className: "note", textContent: t("no2017") }),
     cardFoot([[t("srcAdjust"), PRESS_URL]], t("adjUpdated", last.effective_date),
       downloadButton(`taiwan-electricity-price-adjustments-${mode === "incl" ? "incl-tax" : "excl-tax"}.csv`, csv)),
   );
@@ -186,7 +196,7 @@ function timelineCard(d, mode, tax) {
 }
 
 // ---------------------------------------------------------------------
-// 3. 進階參考：應有單價（預設收合；資料少於 4 筆時只放表格、不畫圖）
+// 3. 進階參考：應有單價（預設收合，只放表格）
 // ---------------------------------------------------------------------
 function requiredCard(d, mode, tax) {
   const rows = d.required;
@@ -202,20 +212,25 @@ function requiredCard(d, mode, tax) {
     el("tbody", {}, rows.map((r) => el("tr", {}, [
       el("td", { className: "c", textContent: pick(r, "period_label") }),
       el("td", { textContent: r.meeting_date }),
-      el("td", { textContent: fix(applyTax(r.required_price, mode)) }),
+      r.is_derived
+        ? el("td", {}, [document.createTextNode(fix(applyTax(r.required_price, mode))), el("span", { className: "badge", textContent: t("derived") })])
+        : el("td", { textContent: fix(applyTax(r.required_price, mode)) }),
       el("td", { textContent: fix(applyTax(r.base_price, mode)) }),
       el("td", { textContent: gapText(r) }),
       el("td", { className: "c" }, [el("a", { href: r.source_url, target: "_blank", rel: "noopener", textContent: t("requiredSource") })]),
     ]))),
   ])]);
-  const csv = () => [cols, ...rows.map((r) => [pick(r, "period_label"), r.meeting_date, fix(applyTax(r.required_price, mode)),
-    r.base_price == null ? "" : fix(applyTax(r.base_price, mode)), r.base_price == null ? "" : fix(applyTax(r.required_price - r.base_price, mode)), r.source_url])];
+  const csv = () => [[...cols, getLang() === "en" ? "Estimated" : "推算"], ...rows.map((r) => [pick(r, "period_label"), r.meeting_date, fix(applyTax(r.required_price, mode)),
+    r.base_price == null ? "" : fix(applyTax(r.base_price, mode)), r.base_price == null ? "" : fix(applyTax(r.required_price - r.base_price, mode)), r.source_url,
+    r.is_derived ? t("yes") : ""])];
   const lastMeeting = rows.length ? rows[rows.length - 1].meeting_date : "";
 
   const details = el("details", { className: "card collapse" }, [
     el("summary", {}, [el("h2", { textContent: t("requiredTitle") })]),
     el("p", { className: "note", textContent: t("requiredNote") }),
     table,
+    rows.some((r) => r.is_derived) ? el("p", { className: "note", textContent: t("requiredDerivedNote") }) : "",
+    el("p", { className: "note", textContent: t("requiredGapNote") }),
     cardFoot([[t("srcRequired"), rows.length ? rows[rows.length - 1].source_url : null]], lastMeeting ? t("requiredUpdated", lastMeeting) : "",
       downloadButton(`taiwan-required-unit-price-${mode === "incl" ? "incl-tax" : "excl-tax"}.csv`, csv)),
   ]);

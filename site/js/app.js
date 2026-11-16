@@ -38,7 +38,8 @@ function parseRoute() {
   if (h === "about") return { view: about, arg: null, key: h };
   if (h === "price") return { view: price, arg: null, key: h };
   if (h === "wheeling") return { view: wheeling, arg: null, key: h };
-  return { view: overview, arg: null, key: "" };
+  // 看不懂的網址（例如打錯字）：回到總覽，並顯示提示，不要默默跳回去讓人以為壞掉了
+  return { view: overview, arg: null, key: "", unknown: h !== "" };
 }
 
 // 有些頁面不需要時間範圍按鈕、也不用每 3 分鐘自動更新（關於頁、電價頁）。
@@ -53,6 +54,10 @@ const refreshes = (view) => view !== about && view.autoRefresh !== false;
 async function load({ refresh = false } = {}) {
   const id = ++state.loadId;           // 連續點很快時，只採用最後一次的結果
   const route = parseRoute();
+  if (route.unknown) {
+    showBanner(t("notFound"));
+    history.replaceState(null, "", location.pathname);
+  }
   if (refresh && state.route?.key !== route.key) refresh = false;
   if (refresh && !refreshes(route.view)) return;   // 這一頁不用自動更新
   const view = $("#view");
