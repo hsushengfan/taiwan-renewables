@@ -157,3 +157,4 @@ details.collapse summary::before{content:"▸";color:var(--ink2);transition:tran
 details.collapse[open] summary::before{transform:rotate(90deg)}
 details.collapse summary h2{display:inline}
 details.collapse[open] summary{margin-bottom:8px}
+details.collapse .subhead{font-size:14px;font-weight:600;margin:16px 0 6px}

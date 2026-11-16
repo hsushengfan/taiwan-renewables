@@ -9,7 +9,7 @@
 // 橫軸都照「真實時間」排列：沒有資料的時段留白，不會把前後的資料接在一起。
 
 import { el, svgEl, cssVar, fmt, hhmm, mmdd, taipeiIso } from "./util.js";
-import { t } from "./i18n.js";
+import { t, getLang } from "./i18n.js";
 
 const BUCKET_MS = { "10min": 600e3, hour: 3600e3, day: 86400e3 };
 const H = 340;                                   // 圖的高度
@@ -263,7 +263,9 @@ export function statusStrip(statuses, labels, times) {
 // =====================================================================
 
 // 共用：外框和橫軸。xs 是年份陣列，例如 [2002, 2003, …, 2026]
-function setupYears(container, xs, { band = false } = {}) {
+//   dates：每個點的日期（例如審議會日期）。有給的話，點照真實日期排列，
+//          一年兩次的資料不會被當成兩年；橫軸標的是年份。
+function setupYears(container, xs, { band = false, dates = null } = {}) {
   container.classList.add("chart");
   const svg = svgEl("svg", { role: "img" });
   const tip = el("div", { className: "tip", hidden: true });
@@ -274,6 +276,7 @@ function setupYears(container, xs, { band = false } = {}) {
   const iw = W - M.l - M.r, ih = H - M.t - M.b;
   // band：長條圖，每一年佔一格、長條畫在格子中間；折線圖則是第一年在最左、最後一年在最右
   const slot = band ? iw / xs.length : iw / Math.max(xs.length - 1, 1);
+  if (dates) return setupDates(svg, tip, W, iw, ih, dates);
   const x = (i) => M.l + (band ? (i + 0.5) * slot : i * slot);
   // 年份標籤：太擠的時候每 2 年或每 5 年標一次
   const every = [1, 2, 5, 10].find((n) => slot * n >= 34) || 10;
@@ -286,6 +289,26 @@ function setupYears(container, xs, { band = false } = {}) {
     svg.append(label);
   });
   return { svg, tip, W, iw, ih, x, slot };
+}
+
+// 照日期排列的橫軸：每年 1 月 1 日畫一條刻度，年份標在那一年的中間
+function setupDates(svg, tip, W, iw, ih, dates) {
+  const ms = dates.map((d) => Date.parse(d));
+  const y0 = new Date(Math.min(...ms)).getUTCFullYear(), y1 = new Date(Math.max(...ms)).getUTCFullYear();
+  const t0 = Date.UTC(y0, 0, 1), t1 = Date.UTC(y1 + 1, 0, 1);
+  const xt = (time) => M.l + ((time - t0) / (t1 - t0)) * iw;
+  const perYear = iw / (y1 - y0 + 1);
+  const every = [1, 2, 5, 10].find((n) => perYear * n >= 34) || 10;
+  for (let yr = y0; yr <= y1 + 1; yr++) {
+    const px = xt(Date.UTC(yr, 0, 1));
+    svg.append(svgEl("line", { x1: px, x2: px, y1: H - M.b, y2: H - M.b + 4, stroke: cssVar("--axis"), "stroke-width": 1 }));
+    if (yr <= y1 && (yr - y0) % every === 0) {
+      const label = svgEl("text", { x: xt(Date.UTC(yr, 6, 1)), y: H - 8, "text-anchor": "middle" });
+      label.textContent = String(yr);
+      svg.append(label);
+    }
+  }
+  return { svg, tip, W, iw, ih, x: (i) => xt(ms[i]), slot: perYear / 2 };
 }
 
 // 年度的提示框：滑鼠在哪一年，就顯示那一年的數字
@@ -323,8 +346,9 @@ function yearHover(g, xs, rowsAt) {
 //              hollow（Set，哪幾個點畫成空心）, format(值, 第幾年) → 提示框裡的文字 }]
 //   縱軸從 0 開始，才不會誇大變化。
 // ---------------------------------------------------------------------
-export function lineChart(container, { xs, series, label }) {
-  const g = setupYears(container, xs);
+//   dates：每個點的日期（見 setupYears）；這時 xs 是提示框的標題，例如「113 年上半年」
+export function lineChart(container, { xs, series, label, dates = null }) {
+  const g = setupYears(container, xs, { dates });
   g.svg.setAttribute("aria-label", label);
   const all = series.flatMap((s) => s.values.filter((v) => v != null));
   const y = yAxis(g, 0, Math.max(...all, 0.01), { small: true });
@@ -362,7 +386,8 @@ export function lineChart(container, { xs, series, label }) {
 //   layers：由下往上 [{ label, color, values }]；totals：長條頂端標的合計（和 xs 對齊）
 //   format(值) → 提示框和頂端標籤的文字
 // ---------------------------------------------------------------------
-export function stackedBars(container, { xs, layers, totals, label, format }) {
+//   shares：提示框裡每一項也顯示佔比
+export function stackedBars(container, { xs, layers, totals, label, format, shares = false }) {
   const g = setupYears(container, xs, { band: true });
   g.svg.setAttribute("aria-label", label);
   const y = yAxis(g, 0, Math.max(...totals.filter((v) => v != null), 0.01) * 1.12, { small: true });
@@ -385,8 +410,12 @@ export function stackedBars(container, { xs, layers, totals, label, format }) {
       g.svg.append(t);
     }
   });
+  // 提示框：金額＋佔比（佔比的分母是「圖上看得到的項目」加總，拿掉一項後其他項的佔比會變）
+  const shown = (i) => layers.reduce((sum, l) => sum + (l.values[i] ?? 0), 0);
+  const paren = (txt) => (getLang() === "en" ? ` (${txt})` : `（${txt}）`);
+  const share = (v, i) => (shown(i) > 0 ? paren(`${((v / shown(i)) * 100).toFixed(1)}%`) : "");
   yearHover(g, xs, (i) => [...layers].reverse().filter((l) => l.values[i] != null)
-    .map((l) => [l.label, format(l.values[i]), l.color])
+    .map((l) => [l.label, format(l.values[i]) + (shares ? share(l.values[i], i) : ""), l.color])
     .concat(totals[i] != null ? [[t("total"), format(totals[i]), null]] : []));
 }
 

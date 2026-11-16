@@ -1,6 +1,7 @@
 // 轉供費率頁（#wheeling）
 //
-//   1. 堆疊長條圖：歷年平均轉供費率的四項組成，長條頂端標合計
+//   1. 堆疊長條圖：歷年再生能源（不排碳）轉供費率的四項組成，長條頂端標合計。
+//      四個項目可以點選加入或拿掉；滑鼠移上去看金額和佔比
 //   2. 折線圖：平均費率合計 vs 再生能源（不排碳）費率合計
 //   3. 表格：兩種費率的完整數字（換算值加註）
 //   4. 說明：四項費用是什麼、誰要付哪幾項
@@ -18,6 +19,8 @@ import { crumbs } from "./category.js";
 
 export const autoRefresh = false;
 export const showFilters = false;
+
+let hiddenParts = new Set();   // 堆疊圖上被拿掉的項目（切換含稅、語言時保留）
 
 const PARTS = [["ancillary", "whAncillary", "--g4"], ["dispatch", "whDispatch", "--g2"],
   ["transmission", "whTransmission", "--g3"], ["distribution", "whDistribution", "--g6"]];
@@ -53,19 +56,49 @@ export function render(root, ctx, data) {
     taxToggle(mode, rerender),
   ]);
 
-  // ---- 1. 堆疊長條圖 ----
-  const avgXs = xs.filter((yr) => row(avg, yr));
+  // ---- 1. 堆疊長條圖（再生能源） ----
+  // 只畫四項都有數字的年份；只有合計的年份列在圖下方的說明
+  const complete = (r) => r && PARTS.every(([f]) => r[f] != null);
+  const stackXs = xs.filter((yr) => complete(row(re, yr)));
+  const partialYears = xs.filter((yr) => row(re, yr) && !complete(row(re, yr)));
   const stackBox = el("div");
-  const stackLegend = legend(PARTS.map(([, k, c]) => [t(k), cssVar(c), "box"]));
+  const toggles = el("div", { className: "legend" });
+  const drawStack = () => {
+    const shown = PARTS.filter(([f]) => !hiddenParts.has(f));
+    toggles.replaceChildren(...PARTS.map(([f, k, c]) => {
+      const on = !hiddenParts.has(f);
+      const sw = el("i");
+      sw.style.background = cssVar(c);
+      const b = el("button", {
+        type: "button", className: "chip",
+        onclick: () => {
+          if (on && shown.length === 1) return;   // 至少留一項
+          on ? hiddenParts.add(f) : hiddenParts.delete(f);
+          drawStack();
+        },
+      }, [sw, document.createTextNode(t(k))]);
+      b.setAttribute("aria-pressed", String(on));
+      return b;
+    }));
+    stackedBars(stackBox, {
+      xs: stackXs, label: t("whStackLabel"), shares: true,
+      layers: shown.map(([f, k, c]) => ({ label: t(k), color: cssVar(c), values: stackXs.map((yr) => applyTax(row(re, yr)[f], mode)) })),
+      // 四項都在：用官方合計；拿掉幾項：用看得到的項目加總
+      totals: stackXs.map((yr) => applyTax(shown.length === PARTS.length ? row(re, yr).total : shown.reduce((sum, [f]) => sum + row(re, yr)[f], 0), mode)),
+      format: fix,
+    });
+  };
   const stackCsv = () => [
     [t("whCols", tax)[0], ...PARTS.map(([, k]) => `${t(k)} (${t("perKwh")}, ${tax})`), `${t("total")} (${t("perKwh")}, ${tax})`, t("whDerived")],
-    ...avgXs.map((yr) => { const r = row(avg, yr); return [yr, ...PARTS.map(([f]) => fix(applyTax(r[f], mode))), fix(applyTax(r.total, mode)), r.is_derived ? t("yes") : ""]; }),
+    ...xs.filter((yr) => row(re, yr)).map((yr) => { const r = row(re, yr); return [yr, ...PARTS.map(([f]) => (r[f] == null ? "" : fix(applyTax(r[f], mode)))), fix(applyTax(r.total, mode)), r.is_derived ? t("yes") : ""]; }),
   ];
+  const reDerivedYears = [...new Set(re.filter((r) => r.is_derived).map((r) => r.year))];
   const stackCard = el("section", { className: "card" }, [
-    el("div", { className: "cardhead" }, [el("h2", { textContent: t("whStackTitle", tax) })]),
-    stackLegend, stackBox,
-    derivedYears.length ? el("p", { className: "note", textContent: t("whDerivedYears", years2text(derivedYears)) }) : "",
-    cardFoot(src, updated, downloadButton(`taiwan-wheeling-rate-components-${fileTax(mode)}.csv`, stackCsv)),
+    el("div", { className: "cardhead" }, [el("h2", { textContent: t("whStackTitle", tax) }), el("span", { className: "sub", textContent: t("whStackHint") })]),
+    toggles, stackBox,
+    partialYears.length ? el("p", { className: "note", textContent: t("whPartialYears", years2text(partialYears)) }) : "",
+    reDerivedYears.length ? el("p", { className: "note", textContent: t("whDerivedYears", years2text(reDerivedYears)) }) : "",
+    cardFoot(src, updated, downloadButton(`taiwan-wheeling-rate-renewable-components-${fileTax(mode)}.csv`, stackCsv)),
   ]);
 
   // ---- 2. 折線圖：平均 vs 再生能源 ----
@@ -131,12 +164,7 @@ export function render(root, ctx, data) {
 
   root.replaceChildren(head, stackCard, lineCard, tableCard, explain);
   requestAnimationFrame(() => {
-    stackedBars(stackBox, {
-      xs: avgXs, label: t("whStackLabel"),
-      layers: PARTS.map(([f, k, c]) => ({ label: t(k), color: cssVar(c), values: avgXs.map((yr) => applyTax(row(avg, yr)[f], mode)) })),
-      totals: avgXs.map((yr) => applyTax(row(avg, yr).total, mode)),
-      format: fix,
-    });
+    drawStack();
     lineChart(lineBox, { xs, series: lineSeries, label: t("whLineLabel") });
   });
 }
