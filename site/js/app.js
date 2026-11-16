@@ -5,6 +5,7 @@
 //   #category-wind_offshore 能源類型頁        views/category.js
 //   #unit-173               機組頁            views/unit.js
 //   #about                  關於／計算方法    views/about.js
+//   #price                  電價走勢          views/price.js
 //
 // 每一頁都有兩個函式：
 //   load(ctx, ...)    向 Supabase 讀這一頁需要的資料
@@ -18,6 +19,7 @@ import * as overview from "./views/overview.js";
 import * as category from "./views/category.js";
 import * as unit from "./views/unit.js";
 import * as about from "./views/about.js";
+import * as price from "./views/price.js";
 import { initAnalytics, trackPage, trackEvent } from "./analytics.js";
 
 // 時間範圍：往回看幾小時、用哪種粒度
@@ -32,8 +34,14 @@ function parseRoute() {
   if ((m = h.match(/^category-([a-z_]+)$/))) return { view: category, arg: m[1], key: h };
   if ((m = h.match(/^unit-(\d+)$/))) return { view: unit, arg: Number(m[1]), key: h };
   if (h === "about") return { view: about, arg: null, key: h };
+  if (h === "price") return { view: price, arg: null, key: h };
   return { view: overview, arg: null, key: "" };
 }
+
+// 有些頁面不需要時間範圍按鈕、也不用每 3 分鐘自動更新（關於頁、電價頁）。
+// 頁面可以在自己的檔案裡寫 export const showFilters = false、autoRefresh = false。
+const showsFilters = (view) => view !== about && view.showFilters !== false;
+const refreshes = (view) => view !== about && view.autoRefresh !== false;
 
 // =====================================================================
 // 讀資料
@@ -43,6 +51,7 @@ async function load({ refresh = false } = {}) {
   const id = ++state.loadId;           // 連續點很快時，只採用最後一次的結果
   const route = parseRoute();
   if (refresh && state.route?.key !== route.key) refresh = false;
+  if (refresh && !refreshes(route.view)) return;   // 這一頁不用自動更新
   const view = $("#view");
   view.classList.add("stale");         // 讀取中先把舊畫面變淡，不要整個清掉
   try {
@@ -99,7 +108,7 @@ function render() {
     b.setAttribute("aria-pressed", b.dataset.range === state.range);
     if (b.disabled) b.title = t("rangeSoon");
   });
-  $("#filters").hidden = state.route?.view === about;     // 關於頁不需要時間範圍
+  $("#filters").hidden = !!state.route && !showsFilters(state.route.view);   // 關於頁、電價頁不需要時間範圍
   if (!state.ctx) { document.title = t("title"); return; }
   const { meta } = state.ctx;
   $("#asof").textContent = t("asof", `${meta.latest.slice(0, 10)} ${meta.latest.slice(11, 16)}`);

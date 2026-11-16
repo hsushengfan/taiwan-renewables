@@ -75,6 +75,9 @@
 | `site/js/views/category.js` | 能源類型頁 |
 | `site/js/views/unit.js` | 機組頁 |
 | `site/js/analytics.js` | 瀏覽人數統計（GoatCounter）。網站代號設定在 `config.js` 的 `GOATCOUNTER_CODE` |
+| `site/js/views/price.js` | 電價走勢頁（`#price`）：平均單價與售電成本、調價時間軸、應有單價 |
+| `site/js/tax.js` | 含稅／未稅切換（記住訪客的選擇，各頁共用） |
+| `site/js/download.js` | 共用的「下載 CSV」按鈕，以及圖表下方的資料來源、資料更新至 |
 | `site/js/views/about.js` | 關於與計算方法頁（`docs/methodology.md` 的網站版，中英文） |
 | `site/favicon.svg`、`site/apple-touch-icon.png` | 瀏覽器分頁和手機主畫面的圖示 |
 | `site/og.png` | 分享到 LINE、Facebook、LinkedIn 時的預覽圖（1200 × 630） |

@@ -34,3 +34,9 @@ export const getUnitSeries = (from, to, { categoryId = null, unitId = null }) =>
 // 每日彙總（發電量、容量因數、資料完整度）。給 categoryId 或 unitId，用法同上。
 export const getDaily = (fromDay, toDay, { categoryId = null, unitId = null }) =>
   rpc("api_daily", { p_from: fromDay, p_to: toDay, p_category_id: categoryId, p_unit_id: unitId });
+
+// 電價走勢頁：平均單價、售電成本、調價時間軸、應有單價（人工整理的資料，未稅）
+export const getPrice = () => rpc("api_price");
+
+// 轉供費率頁：輸配電業各項費率（未稅）
+export const getWheeling = () => rpc("api_wheeling");
