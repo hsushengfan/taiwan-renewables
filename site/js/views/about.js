@@ -92,6 +92,18 @@ const CONTENT = {
 </section>
 
 <section class="card prose">
+  <h3>電價與轉供費率資料</h3>
+  <ul>
+    <li>「<a href="#price">電價</a>」和「<a href="#wheeling">轉供費率</a>」兩頁的數字是人工整理的，來自台電與經濟部能源署的公開資料，不是自動收集的。</li>
+    <li><b>平均單價</b>＝電費收入 ÷ 售電度數，是實績，不是電價表上的牌價。來源：台電「歷年平均單價」。</li>
+    <li><b>每度售電成本</b>由三個官方來源拼接（立法院預算中心、監察院報告、台電「電價及單位成本結構比較」），各年來源不同；2023 年只有 2 位小數，照原精度顯示。</li>
+    <li><b>轉供費率</b>來自能源署電價及費率審議資訊揭露專區。2026 年官方公告的是含稅值，分項是除以 1.05 的換算值。</li>
+    <li><b>含稅或未稅：</b>資料一律存未稅值，含稅＝未稅 × 1.05。台電沒有明文寫平均單價是否含稅，本站依三項證據判斷為未稅：(1) 和決算表的「每度平均電價」幾乎相同，而決算的營業收入不含營業稅；(2) 審議會公布的平均電價和電價表的含稅價差約 5%；(3) 輸配電費率公式明文寫「計算結果不含營業稅，公告時自行計入」。每度售電成本沒有含稅的概念，不隨切換改變。</li>
+    <li><b>更新頻率：</b>平均單價每年、售電成本每月、轉供費率每年 12 月、電價調整每年 3 月與 9 月審議後。</li>
+  </ul>
+</section>
+
+<section class="card prose">
   <h3>隱私</h3>
   <p>本網站用 <a href="https://www.goatcounter.com" target="_blank" rel="noopener">GoatCounter</a> 統計瀏覽次數。它不使用 cookie，也不記錄可以辨識個人的資訊。網站沒有登入功能，不收集任何個人資料。</p>
 </section>
@@ -173,6 +185,18 @@ const CONTENT = {
     <li><b>Some rows combine several units</b>, such as "Other Purchased Solar" and "Northern Small Hydro", and can only be treated as a whole. According to Taipower's notes, only solar plants above 20 MW connected at 69 kV or higher are listed individually; the rest are combined into "Other Purchased Solar", about 98% of total solar capacity.</li>
     <li><b>Output occasionally exceeds installed capacity</b> (for example 104%), possibly because the capacity figure has not been updated. Capacity factor is capped at 100%.</li>
   </ol>
+</section>
+
+<section class="card prose">
+  <h3>Electricity price and wheeling rate data</h3>
+  <ul>
+    <li>The figures on the <a href="#price">electricity prices</a> and <a href="#wheeling">wheeling rates</a> pages are compiled by hand from public data published by Taipower and the Energy Administration (Ministry of Economic Affairs). They are not collected automatically.</li>
+    <li><b>Average unit price</b> = electricity revenue ÷ kWh sold. It is an actual result, not a tariff rate. Source: Taipower, average unit price by year.</li>
+    <li><b>Unit cost of electricity sold</b> is combined from three official sources (Legislative Yuan Budget Center, Control Yuan report, and Taipower's comparison of price and unit cost structure), so the source differs by year. The 2023 figure has only two decimal places and is shown as published.</li>
+    <li><b>Wheeling rates</b> come from the Energy Administration's electricity price and rate review disclosures. The 2026 figures were published including tax; the components are divided by 1.05.</li>
+    <li><b>Including or excluding tax:</b> all figures are stored excluding tax; including tax = excluding tax × 1.05. Taipower does not state whether the average unit price includes tax. This site treats it as excluding tax based on three pieces of evidence: (1) it almost matches the "average price per kWh" in the final accounts, whose operating revenue excludes business tax; (2) the average price published by the review committee is about 5% below the tax-inclusive tariff; (3) the wheeling rate formula states that "results exclude business tax, which is added when the rates are announced". The unit cost has no tax component and does not change with the toggle.</li>
+    <li><b>Update frequency:</b> average unit price yearly, unit cost monthly, wheeling rates every December, price adjustments after the March and September reviews.</li>
+  </ul>
 </section>
 
 <section class="card prose">

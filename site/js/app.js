@@ -6,6 +6,7 @@
 //   #unit-173               機組頁            views/unit.js
 //   #about                  關於／計算方法    views/about.js
 //   #price                  電價走勢          views/price.js
+//   #wheeling               轉供費率          views/wheeling.js
 //
 // 每一頁都有兩個函式：
 //   load(ctx, ...)    向 Supabase 讀這一頁需要的資料
@@ -20,6 +21,7 @@ import * as category from "./views/category.js";
 import * as unit from "./views/unit.js";
 import * as about from "./views/about.js";
 import * as price from "./views/price.js";
+import * as wheeling from "./views/wheeling.js";
 import { initAnalytics, trackPage, trackEvent } from "./analytics.js";
 
 // 時間範圍：往回看幾小時、用哪種粒度
@@ -35,6 +37,7 @@ function parseRoute() {
   if ((m = h.match(/^unit-(\d+)$/))) return { view: unit, arg: Number(m[1]), key: h };
   if (h === "about") return { view: about, arg: null, key: h };
   if (h === "price") return { view: price, arg: null, key: h };
+  if (h === "wheeling") return { view: wheeling, arg: null, key: h };
   return { view: overview, arg: null, key: "" };
 }
 

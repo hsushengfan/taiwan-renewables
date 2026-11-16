@@ -146,6 +146,11 @@ button.dl:hover{background:var(--wash)}
 .tl-detail a{color:var(--g4)}
 svg.marker{flex:none;vertical-align:-1px}
 
+p.lead{margin:10px 0 0;font-size:14px;color:var(--ink);max-width:80ch}
+.prose dl.deflist{margin:0 0 12px;display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;max-width:80ch}
+.prose dl.deflist dt{font-weight:600}
+.prose dl.deflist dd{margin:0;color:var(--ink2)}
+.prose h3 + dl, .prose dl + h3{margin-top:4px}
 details.collapse summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px}
 details.collapse summary::-webkit-details-marker{display:none}
 details.collapse summary::before{content:"▸";color:var(--ink2);transition:transform .15s}

@@ -76,6 +76,7 @@
 | `site/js/views/unit.js` | 機組頁 |
 | `site/js/analytics.js` | 瀏覽人數統計（GoatCounter）。網站代號設定在 `config.js` 的 `GOATCOUNTER_CODE` |
 | `site/js/views/price.js` | 電價走勢頁（`#price`）：平均單價與售電成本、調價時間軸、應有單價 |
+| `site/js/views/wheeling.js` | 轉供費率頁（`#wheeling`）：四項組成、平均 vs 再生能源、完整數字表 |
 | `site/js/tax.js` | 含稅／未稅切換（記住訪客的選擇，各頁共用） |
 | `site/js/download.js` | 共用的「下載 CSV」按鈕，以及圖表下方的資料來源、資料更新至 |
 | `site/js/views/about.js` | 關於與計算方法頁（`docs/methodology.md` 的網站版，中英文） |
@@ -92,7 +93,12 @@
 | 總覽 | `…/taiwan-renewables/` | 四個重點數字、各能源堆疊面積圖、能源類型表 |
 | 能源類型頁 | `…/#category-wind_offshore` | 該類型的發電量曲線（加上裝置容量參考線）、機組表 |
 | 機組頁 | `…/#unit-173` | 發電量曲線、和時間軸對齊的狀態色帶、每日紀錄 |
-| 關於與計算方法 | `…/#about` | 資料來源、指標定義、為什麼沒有可用率、狀態分類、能源分類、已知限制 |
+| 關於與計算方法 | `…/#about` | 資料來源、指標定義、為什麼沒有可用率、狀態分類、能源分類、已知限制、電價資料的來源與含稅判斷 |
+| 電價走勢 | `…/#price` | 歷年平均單價（住宅、小商家、產業）與每度售電成本、調價時間軸、應有單價（收合）。預設含稅 |
+| 轉供費率 | `…/#wheeling` | 平均費率四項組成的堆疊長條圖、平均 vs 再生能源（不排碳）、完整數字表。預設未稅 |
+
+電價和轉供費率兩頁的資料是人工整理的（見 `docs/methodology.md` 的「電價資料」），不顯示時間範圍按鈕、也不自動更新。
+每張圖表和表格下方都有資料來源、資料更新至、下載 CSV；含稅／未稅的選擇會記住，各頁共用。
 
 能源類型的代號見 `docs/database.md` 的 `categories` 表；機組編號是 `units.id`。
 
