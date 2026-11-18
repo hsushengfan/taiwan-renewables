@@ -69,7 +69,11 @@ export function render(root, ctx, data) {
 
   const head = el("div", { className: "pagehead row" }, [
     el("div", {}, [crumbs([[t("navOverview"), "#"], [t("wheelingTitle")]]), el("h2", { className: "pagetitle", textContent: t("wheelingTitle") })]),
-    taxToggle(mode, rerender),
+    el("div", { className: "headtools" }, [
+      docs.length ? el("a", { href: "#wheeling", className: "chip", textContent: t("whDocJump"),
+        onclick: (e) => { e.preventDefault(); document.getElementById("wheeling-docs")?.scrollIntoView({ behavior: "smooth" }); } }) : "",
+      taxToggle(mode, rerender),
+    ]),
   ]);
 
   // ---- 1. 堆疊長條圖（再生能源） ----
@@ -179,7 +183,25 @@ export function render(root, ctx, data) {
     el("ul", {}, t("whWhoPays").map((s) => el("li", { textContent: s }))),
   ]);
 
-  root.replaceChildren(head, stackCard, lineCard, tableCard, explain);
+  // ---- 台電公告原檔：每一年一列，直接點開 PDF ----
+  const docCols = t("whDocCols");
+  const docCard = docs.length ? el("section", { className: "card", id: "wheeling-docs" }, [
+    el("div", { className: "cardhead" }, [el("h2", { textContent: t("whDocCardTitle") }), el("span", { className: "sub", textContent: t("whDocCardHint") })]),
+    el("div", { className: "scroll" }, [el("table", {}, [
+      el("thead", {}, [el("tr", {}, docCols.map((c, i) => el("th", { textContent: c, className: i === 0 ? "" : "c" })))]),
+      el("tbody", {}, [...docs].reverse().map((x) => el("tr", {}, [
+        el("td", { textContent: x.year }),
+        el("td", { className: "c", textContent: x.announced_on || "—" }),
+        el("td", { className: "c", textContent: x.doc_no || "—" }),
+        el("td", { className: "c" }, [el("a", { href: x.pdf_path, target: "_blank", rel: "noopener", textContent: t("whDocOpen", x.year) })]),
+      ]))),
+    ])]),
+    cardFoot([[t("whDocSource"), "https://www.taipower.com.tw/2289/2558/49405/49414/nodeList"]], t("whUpdated", lastYear),
+      downloadButton("taiwan-wheeling-rate-documents.csv", () => [docCols, ...docs.map((x) => [x.year, x.announced_on || "", x.doc_no || "",
+        new URL(x.pdf_path, location.href.split("#")[0]).href])])),
+  ]) : "";
+
+  root.replaceChildren(head, stackCard, docCard, lineCard, tableCard, explain);
   requestAnimationFrame(() => {
     drawStack();
     lineChart(lineBox, { xs, series: lineSeries, label: t("whLineLabel") });
