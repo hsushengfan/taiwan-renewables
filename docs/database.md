@@ -399,14 +399,14 @@ select refresh_category_readings();
 
 #### `wheeling_rates`：轉供費率
 
-- **一筆資料代表**：某一年、某一種轉供費率。從 2019 年（108 年）開始記錄。
-- **來源**：2022 年起以台電「輸配電業各項費率方案」公告 PDF 為準（`012_wheeling_rates_by_fuel.sql`）；
-  更早的年份來自能源署電價及費率審議資訊揭露專區。
+- **一筆資料代表**：某一年、某一種轉供費率。從 2019 年（108 年）開始記錄，2019～2026 年 × 8 種，共 64 筆。
+- **來源**：台電「輸配電業各項費率方案」公告 PDF（`012_wheeling_rates_by_fuel.sql`、`013_wheeling_rates_2019_2021.sql`）。
+  平均費率和部分再生能源的數字最早來自能源署電價及費率審議資訊揭露專區，和台電公告換算的結果一樣，保留原本的數字。
 
 | 欄位 | 意思 | 單位／格式 |
 |---|---|---|
 | `year` | 適用年度（西元） | 年 |
-| `fuel_type` | `average` 平均費率、`re_zero_carbon` 再生能源（不排碳）、`re_carbon` 再生能源（排碳，垃圾及廢輪胎等）、`nuclear` 核能、`coal` 燃煤、`oil` 燃油、`gas` 燃氣、`pumped_hydro` 抽蓄水力（後 6 種 2022 年起才有） | 文字 |
+| `fuel_type` | `average` 平均費率、`re_zero_carbon` 再生能源（不排碳）、`re_carbon` 再生能源（排碳，垃圾及廢輪胎等）、`nuclear` 核能、`coal` 燃煤、`oil` 燃油、`gas` 燃氣、`pumped_hydro` 抽蓄水力 | 文字 |
 | `ancillary` | 輔助服務費 | **元/度，未稅** |
 | `dispatch` | 電力調度費 | 元/度，未稅 |
 | `transmission` | 轉供輸電費 | 元/度，未稅 |
@@ -415,7 +415,7 @@ select refresh_category_readings();
 | `is_derived` | `true`＝官方公告的是含稅值，這裡是 ÷ 1.05 的換算值（台電公告 PDF 上的數字都含 5% 營業稅） | 是／否 |
 | `source_zh` / `_en`、`source_url` | 來源 | 文字、網址 |
 
-查不到的欄位是空值；查不到的年份不建列，也不用內插補（例如 2021 年的再生能源還沒有資料）。
+查不到的欄位是空值；查不到的年份不建列，也不用內插補。
 
 #### `wheeling_rate_docs`：轉供費率的台電公告原檔
 
@@ -424,8 +424,8 @@ select refresh_category_readings();
 | 欄位 | 意思 | 單位／格式 |
 |---|---|---|
 | `year` | 適用年度（西元） | 年 |
-| `announced_on` | 台電公告日期 | 日期 |
-| `doc_no` | 發文字號，例如「電業字第1148172997號」 | 文字 |
+| `announced_on` | 台電公告日期（2019 年的檔案沒有公告首頁，是空值） | 日期 |
+| `doc_no` | 發文字號，例如「電業字第1148172997號」（2019 年是空值） | 文字 |
 | `pdf_path` | 網站裡的 PDF 路徑，例如 `files/wheeling/2026.pdf` | 文字 |
 
 新增一年時：把 PDF 放進 `site/files/wheeling/<西元年>.pdf`，再照 `012` 的格式加一列。
