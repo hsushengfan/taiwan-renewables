@@ -400,8 +400,9 @@ select refresh_category_readings();
 #### `wheeling_rates`：轉供費率
 
 - **一筆資料代表**：某一年、某一種轉供費率。從 2019 年（108 年）開始記錄，2019～2026 年 × 8 種，共 64 筆。
-- **來源**：台電「輸配電業各項費率方案」公告 PDF（`012_wheeling_rates_by_fuel.sql`、`013_wheeling_rates_2019_2021.sql`）。
-  平均費率和部分再生能源的數字最早來自能源署電價及費率審議資訊揭露專區，和台電公告換算的結果一樣，保留原本的數字。
+- **來源**：台電「輸配電業各項費率方案」公告 PDF（`012_wheeling_rates_by_fuel.sql`、`013_wheeling_rates_2019_2021.sql`、`014_wheeling_rates_unify_source.sql`）。
+- **未稅換算**：公告上的費率含 5% 營業稅。每一列都是 未稅＝公告值 ÷ 1.05（四捨五入到小數第 4 位），合計＝四項公告值加總 ÷ 1.05。
+  所有列的算法都一樣，所以沒有逐列的「換算」標記（原本的 `is_derived` 欄位在 014 刪掉了）。
 
 | 欄位 | 意思 | 單位／格式 |
 |---|---|---|
@@ -412,7 +413,6 @@ select refresh_category_readings();
 | `transmission` | 轉供輸電費 | 元/度，未稅 |
 | `distribution` | 轉供配電費 | 元/度，未稅 |
 | `total` | 四項合計 | 元/度，未稅 |
-| `is_derived` | `true`＝官方公告的是含稅值，這裡是 ÷ 1.05 的換算值（台電公告 PDF 上的數字都含 5% 營業稅） | 是／否 |
 | `source_zh` / `_en`、`source_url` | 來源 | 文字、網址 |
 
 查不到的欄位是空值；查不到的年份不建列，也不用內插補。

@@ -65,7 +65,6 @@ export function render(root, ctx, data) {
   const src = [];
   rates.forEach((r) => { const l = pick(r, "source"); if (!src.some(([x]) => x === l)) src.push([l, r.source_url]); });
   const updated = t("whUpdated", lastYear);
-  const derivedYears = [...new Set(rates.filter((r) => r.is_derived).map((r) => r.year))];
 
   const head = el("div", { className: "pagehead row" }, [
     el("div", {}, [crumbs([[t("navOverview"), "#"], [t("wheelingTitle")]]), el("h2", { className: "pagetitle", textContent: t("wheelingTitle") })]),
@@ -109,16 +108,15 @@ export function render(root, ctx, data) {
     });
   };
   const stackCsv = () => [
-    [t("whCols", tax)[0], ...PARTS.map(([, k]) => `${t(k)} (${t("perKwh")}, ${tax})`), `${t("total")} (${t("perKwh")}, ${tax})`, t("whDerived")],
-    ...xs.filter((yr) => row(re, yr)).map((yr) => { const r = row(re, yr); return [yr, ...PARTS.map(([f]) => (r[f] == null ? "" : fix(applyTax(r[f], mode)))), fix(applyTax(r.total, mode)), r.is_derived ? t("yes") : ""]; }),
+    [t("whCols", tax)[0], ...PARTS.map(([, k]) => `${t(k)} (${t("perKwh")}, ${tax})`), `${t("total")} (${t("perKwh")}, ${tax})`],
+    ...xs.filter((yr) => row(re, yr)).map((yr) => { const r = row(re, yr); return [yr, ...PARTS.map(([f]) => (r[f] == null ? "" : fix(applyTax(r[f], mode)))), fix(applyTax(r.total, mode))]; }),
   ];
-  const reDerivedYears = [...new Set(re.filter((r) => r.is_derived).map((r) => r.year))];
   const stackCard = el("section", { className: "card" }, [
     el("div", { className: "cardhead" }, [el("h2", { textContent: t("whStackTitle", tax) }), el("span", { className: "sub", textContent: t("whStackHint") })]),
     toggles, stackBox, docList,
     partialYears.length ? el("p", { className: "note", textContent: t("whPartialYears", years2text(partialYears)) }) : "",
     xs.some((yr) => !row(re, yr)) ? el("p", { className: "note", textContent: t("whGapNote", years2text(xs.filter((yr) => !row(re, yr)))) }) : "",
-    reDerivedYears.length ? el("p", { className: "note", textContent: t("whDerivedYears", years2text(reDerivedYears)) }) : "",
+    el("p", { className: "note", textContent: t("whTaxNote") }),
     cardFoot(src, updated, downloadButton(`taiwan-wheeling-rate-renewable-components-${fileTax(mode)}.csv`, stackCsv)),
   ]);
 
@@ -155,22 +153,21 @@ export function render(root, ctx, data) {
   const sorted = [...avg, ...re];
   const tableRows = sorted.map((r) => {
     const name = el("td", { className: "c", textContent: r.fuel_type === "average" ? t("whAverage") : t("whRe") });
-    if (r.is_derived) name.append(el("span", { className: "badge", textContent: t("whDerived") }));
     return el("tr", {}, [
       el("td", {}, [yearCell(r.year)]), name,
       ...PARTS.map(([f]) => el("td", { textContent: fix(applyTax(r[f], mode)), className: r[f] == null ? "dim" : "" })),
       el("td", { textContent: fix(applyTax(r.total, mode)) }),
     ]);
   });
-  const tableCsv = () => [[...cols.map((c, i) => (i >= 2 ? `${c} (${t("perKwh")}, ${tax})` : c)), t("whDerived")], ...sorted.map((r) => [r.year, r.fuel_type === "average" ? t("whAverage") : t("whRe"),
-    ...PARTS.map(([f]) => (r[f] == null ? "" : fix(applyTax(r[f], mode)))), fix(applyTax(r.total, mode)), r.is_derived ? t("yes") : ""])];
+  const tableCsv = () => [[...cols.map((c, i) => (i >= 2 ? `${c} (${t("perKwh")}, ${tax})` : c))], ...sorted.map((r) => [r.year, r.fuel_type === "average" ? t("whAverage") : t("whRe"),
+    ...PARTS.map(([f]) => (r[f] == null ? "" : fix(applyTax(r[f], mode)))), fix(applyTax(r.total, mode))])];
   const tableCard = el("section", { className: "card" }, [
     el("div", { className: "cardhead" }, [el("h2", { textContent: t("whTableTitle", tax) })]),
     el("div", { className: "scroll" }, [el("table", {}, [
       el("thead", {}, [el("tr", {}, cols.map((c, i) => el("th", { textContent: c, className: i === 1 ? "c" : "" })))]),
       el("tbody", {}, tableRows),
     ])]),
-    derivedYears.length ? el("p", { className: "note", textContent: t("whDerivedNote") }) : "",
+    el("p", { className: "note", textContent: t("whTaxNote") }),
     rates.some((r) => r.ancillary == null) ? el("p", { className: "note", textContent: t("whPartialNote") }) : "",
     cardFoot(src, updated, downloadButton(`taiwan-wheeling-rates-${fileTax(mode)}.csv`, tableCsv)),
   ]);
