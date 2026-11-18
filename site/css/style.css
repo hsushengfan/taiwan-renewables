@@ -160,5 +160,3 @@ details.collapse[open] summary{margin-bottom:8px}
 details.collapse .subhead{font-size:14px;font-weight:600;margin:16px 0 6px}
 .doclinks{font-size:13px;color:var(--ink2);margin:10px 0 0;line-height:2}
 .doclinks .chip{text-decoration:none}
-.headtools{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-.headtools a.chip{text-decoration:none}
