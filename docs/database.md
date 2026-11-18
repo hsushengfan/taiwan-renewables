@@ -15,8 +15,8 @@
 
 ## 1. 一眼看懂
 
-資料庫裡有 14 張資料表、1 個 view，另外在 Storage（雲端硬碟）存原始檔。
-其中 9 張和「即時發電資料」有關（下表上半部），5 張是人工整理的「電價與轉供費率」（下表下半部，見第 4 節最後）。
+資料庫裡有 15 張資料表、1 個 view，另外在 Storage（雲端硬碟）存原始檔。
+其中 9 張和「即時發電資料」有關（下表上半部），6 張是人工整理的「電價與轉供費率」（下表下半部，見第 4 節最後）。
 
 | 名稱 | 種類 | 一筆資料代表什麼 | 原始還是算出來的 |
 |---|---|---|---|
@@ -34,7 +34,8 @@
 | [`avg_unit_prices`](#avg_unit_prices歷年平均單價) | 資料表 | 某一年某一類用電的平均單價 | **人工整理的原始資料** |
 | [`unit_costs`](#unit_costs每度售電成本) | 資料表 | 某一年的每度售電成本 | **人工整理的原始資料** |
 | [`price_adjustments`](#price_adjustments電價調整時間軸) | 資料表 | 一次電價審議的結果（調漲、調降、不調整、延後） | **人工整理的原始資料** |
-| [`wheeling_rates`](#wheeling_rates轉供費率) | 資料表 | 某一年某一種轉供費率（平均或再生能源） | **人工整理的原始資料** |
+| [`wheeling_rates`](#wheeling_rates轉供費率) | 資料表 | 某一年某一種轉供費率（平均、再生能源、各燃料別） | **人工整理的原始資料** |
+| [`wheeling_rate_docs`](#wheeling_rate_docs轉供費率的台電公告原檔) | 資料表 | 某一年台電公告的費率方案原檔（PDF） | **人工整理的原始資料** |
 | [`required_unit_prices`](#required_unit_prices應有單價) | 資料表 | 一場審議會上台電提報的應有單價 | **人工整理的原始資料** |
 
 **view 是什麼？** view 不存資料，它是一個「存起來的查詢」。
@@ -93,7 +94,7 @@ flowchart TD
 | **規則** | `statuses`、`remark_rules`、`categories`；`units` 的 `category_id` 和 `name_en`；各表的英文名稱 | 我們自己訂的分類方式和翻譯，可以修改 |
 | **算出來的** | `readings.status_id`；`readings_evaluated`；`daily_unit_stats`；`category_readings` | 由原始資料和規則算出來。規則改了，重算就好 |
 | **系統紀錄** | `collection_runs`、`usage_checks` | 用來查收集和用量有沒有正常，`collection_runs` 只保留 90 天 |
-| **人工整理的原始資料** | `avg_unit_prices`、`unit_costs`、`price_adjustments`、`wheeling_rates`、`required_unit_prices` | 從台電、能源署等官方文件人工抄錄，不是自動收集的。要更新時改 `010_electricity_price.sql` 再執行一次 |
+| **人工整理的原始資料** | `avg_unit_prices`、`unit_costs`、`price_adjustments`、`wheeling_rates`、`wheeling_rate_docs`、`required_unit_prices` | 從台電、能源署等官方文件人工抄錄，不是自動收集的。要更新時改 `010_electricity_price.sql` 再執行一次 |
 
 `readings.status_id` 比較特別：它存在原始資料的表裡，但它是由 `remark` 依規則算出來的。
 修改 `remark_rules` 時，資料庫會自動把相關的舊資料重新分類。
@@ -341,7 +342,7 @@ select refresh_category_readings();
 
 ### 電價與轉供費率（人工整理）
 
-這 5 張表和即時發電資料無關，是從官方文件人工整理的數字（規格見 `docs/specs/electricity-price.md`，
+這 6 張表和即時發電資料無關，是從官方文件人工整理的數字（規格見 `docs/specs/electricity-price.md`，
 計算與含稅判斷見 `docs/methodology.md`）。定義和種子資料都在 `010_electricity_price.sql`。
 
 共同規則：
@@ -350,7 +351,7 @@ select refresh_category_readings();
 - **給人看的文字拆成 `_zh`、`_en` 兩欄**（例如 `summary_zh`、`summary_en`）。
 - **要更新數字時**：改 `010_electricity_price.sql` 的數字，整份再執行一次（已有的資料會被更新）。
   應有單價的歷年資料和 `is_derived` 欄位在 `011_required_unit_price_history.sql`；之後新增場次可以照它的格式加一列再執行。
-- 5 張表都開了 RLS、沒有開放規則，網站只能透過 `api_price()`、`api_wheeling()` 讀（見第 7 節）。
+- 6 張表都開了 RLS、沒有開放規則，網站只能透過 `api_price()`、`api_wheeling()` 讀（見第 7 節）。
 
 #### `avg_unit_prices`：歷年平均單價
 
@@ -398,22 +399,36 @@ select refresh_category_readings();
 
 #### `wheeling_rates`：轉供費率
 
-- **一筆資料代表**：某一年、某一種轉供費率。共 15 筆。
-- **來源**：能源署電價及費率審議資訊揭露專區 → 輸配電業各項費率。
+- **一筆資料代表**：某一年、某一種轉供費率。從 2019 年（108 年）開始記錄。
+- **來源**：2022 年起以台電「輸配電業各項費率方案」公告 PDF 為準（`012_wheeling_rates_by_fuel.sql`）；
+  更早的年份來自能源署電價及費率審議資訊揭露專區。
 
 | 欄位 | 意思 | 單位／格式 |
 |---|---|---|
 | `year` | 適用年度（西元） | 年 |
-| `fuel_type` | `average` 平均費率、`re_zero_carbon` 再生能源（不排碳） | 文字 |
+| `fuel_type` | `average` 平均費率、`re_zero_carbon` 再生能源（不排碳）、`re_carbon` 再生能源（排碳，垃圾及廢輪胎等）、`nuclear` 核能、`coal` 燃煤、`oil` 燃油、`gas` 燃氣、`pumped_hydro` 抽蓄水力（後 6 種 2022 年起才有） | 文字 |
 | `ancillary` | 輔助服務費 | **元/度，未稅** |
 | `dispatch` | 電力調度費 | 元/度，未稅 |
 | `transmission` | 轉供輸電費 | 元/度，未稅 |
 | `distribution` | 轉供配電費 | 元/度，未稅 |
 | `total` | 四項合計 | 元/度，未稅 |
-| `is_derived` | `true`＝官方公告的是含稅值，這裡是 ÷ 1.05 的換算值（2026 年） | 是／否 |
+| `is_derived` | `true`＝官方公告的是含稅值，這裡是 ÷ 1.05 的換算值（台電公告 PDF 上的數字都含 5% 營業稅） | 是／否 |
 | `source_zh` / `_en`、`source_url` | 來源 | 文字、網址 |
 
-查不到的欄位是空值（例如 2025 年的再生能源只有合計）；查不到的年份不建列，也不用內插補。
+查不到的欄位是空值；查不到的年份不建列，也不用內插補（例如 2021 年的再生能源還沒有資料）。
+
+#### `wheeling_rate_docs`：轉供費率的台電公告原檔
+
+- **一筆資料代表**：某一年台電公告的「輸配電業各項費率方案」。原檔存在網站裡（`site/files/wheeling/`），台電日後刪檔也還看得到。
+
+| 欄位 | 意思 | 單位／格式 |
+|---|---|---|
+| `year` | 適用年度（西元） | 年 |
+| `announced_on` | 台電公告日期 | 日期 |
+| `doc_no` | 發文字號，例如「電業字第1148172997號」 | 文字 |
+| `pdf_path` | 網站裡的 PDF 路徑，例如 `files/wheeling/2026.pdf` | 文字 |
+
+新增一年時：把 PDF 放進 `site/files/wheeling/<西元年>.pdf`，再照 `012` 的格式加一列。
 
 #### `required_unit_prices`：應有單價
 
@@ -478,7 +493,7 @@ select refresh_category_readings();
 | `api_unit_series(開始, 結束, 分類, 機組)` | 機組每 10 分鐘的發電量（MW）、狀態代碼和備註原文。狀態 0 代表那個時間點沒有資料 | 最多 8 天；分類和機組至少要給一個 |
 | `api_daily(開始日, 結束日, 分類, 機組)` | 每日彙總（發電量、容量因數等） | 沒指定機組最多 62 天；指定單一機組最多 5 年 |
 | `api_price()` | 電價走勢頁的全部資料：`avg_unit_prices`、`unit_costs`、`adjustments`、`required` | 沒有參數（資料量很小，一次全部回傳） |
-| `api_wheeling()` | 轉供費率頁的資料：`rates` | 沒有參數 |
+| `api_wheeling()` | 轉供費率頁的資料：`rates`（各年各種費率）、`docs`（每年的台電公告原檔） | 沒有參數 |
 
 `hour` 和 `day` 粒度回傳的是那段時間內每 10 分鐘數值的平均。
 

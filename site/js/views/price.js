@@ -22,6 +22,7 @@ const TAIPOWER_URL = "https://www.taipower.com.tw";
 const PRESS_URL = "https://www3.moeaea.gov.tw/ele102/Content/NewsLetter/List.aspx?MmmID=654246033427256710";
 
 let selected = null;   // 時間軸目前選到第幾個（換語言、切換含稅時保留）
+let requiredOpen = false;   // 應有單價區塊是否展開（切換含稅、語言時保留）
 
 export async function load() {
   return { price: await getPrice() };
@@ -196,10 +197,39 @@ function timelineCard(d, mode, tax) {
 }
 
 // ---------------------------------------------------------------------
-// 3. 進階參考：應有單價（預設收合，只放表格）
+// 3. 進階參考：應有單價（預設收合）
+//    走勢圖：每場審議會的應有單價，對照那次審議後實際的平均電價
 // ---------------------------------------------------------------------
 function requiredCard(d, mode, tax) {
   const rows = d.required;
+  // 審議後實際的平均電價：審議會之後第一個生效的調價結果（例如 3 月審議 → 4 月 1 日生效）
+  const after = (r) => d.adjustments.find((a) => a.effective_date > r.meeting_date) || null;
+  const label = (r) => (getLang() === "en" ? `${pick(r, "period_label")} (${r.meeting_date})` : `${pick(r, "period_label")}（${r.meeting_date}）`);
+  const reqSeries = {
+    label: t("requiredSeries"), color: cssVar("--st-crit"),
+    values: rows.map((r) => applyTax(r.required_price, mode)),
+    hollow: new Set(rows.map((r, i) => (r.is_derived ? i : -1)).filter((i) => i >= 0)),
+    format: (v, i) => {
+      const a = after(rows[i]);
+      const txt = `${fix(v)} ${t("perKwh")}` + (rows[i].is_derived ? ` ${t("derived")}` : "");
+      return a ? txt + t("requiredVsActual", pct((rows[i].required_price / a.avg_price_after - 1) * 100)) : txt;
+    },
+  };
+  const actSeries = {
+    label: t("actualSeries"), color: cssVar("--g4"),
+    values: rows.map((r) => applyTax(after(r)?.avg_price_after ?? null, mode)),
+    hollow: new Set(rows.map((r, i) => (after(r)?.avg_price_is_derived ? i : -1)).filter((i) => i >= 0)),
+    format: (v, i) => `${fix(v)} ${t("perKwh")}` + (after(rows[i])?.avg_price_is_derived ? ` ${t("derived")}` : ""),
+  };
+  const chartLegend = el("div", { className: "legend static" }, [reqSeries, actSeries].map((s) => {
+    const k = el("i", { className: "k" });
+    k.style.setProperty("--c", s.color);
+    return el("span", { className: "lg" }, [k, document.createTextNode(s.label)]);
+  }));
+  const chartBox = el("div");
+  const drawChart = () => lineChart(chartBox, {
+    xs: rows.map(label), dates: rows.map((r) => r.meeting_date), series: [reqSeries, actSeries], label: t("requiredChartLabel"),
+  });
   const gapText = (r) => {
     if (r.base_price == null) return "—";
     const gap = applyTax(r.required_price - r.base_price, mode);
@@ -220,19 +250,26 @@ function requiredCard(d, mode, tax) {
       el("td", { className: "c" }, [el("a", { href: r.source_url, target: "_blank", rel: "noopener", textContent: t("requiredSource") })]),
     ]))),
   ])]);
-  const csv = () => [[...cols, getLang() === "en" ? "Estimated" : "推算"], ...rows.map((r) => [pick(r, "period_label"), r.meeting_date, fix(applyTax(r.required_price, mode)),
+  const csv = () => [[...cols, getLang() === "en" ? "Estimated" : "推算", t("actualCsvCol", tax)], ...rows.map((r) => [pick(r, "period_label"), r.meeting_date, fix(applyTax(r.required_price, mode)),
     r.base_price == null ? "" : fix(applyTax(r.base_price, mode)), r.base_price == null ? "" : fix(applyTax(r.required_price - r.base_price, mode)), r.source_url,
-    r.is_derived ? t("yes") : ""])];
+    r.is_derived ? t("yes") : "", after(r) ? fix(applyTax(after(r).avg_price_after, mode)) : ""])];
   const lastMeeting = rows.length ? rows[rows.length - 1].meeting_date : "";
 
-  const details = el("details", { className: "card collapse" }, [
+  const details = el("details", { className: "card collapse", open: requiredOpen }, [
     el("summary", {}, [el("h2", { textContent: t("requiredTitle") })]),
     el("p", { className: "note", textContent: t("requiredNote") }),
+    rows.length >= 4 ? el("h3", { className: "subhead", textContent: t("requiredChartTitle", tax) }) : "",
+    rows.length >= 4 ? chartLegend : "",
+    rows.length >= 4 ? chartBox : "",
+    rows.length >= 4 ? el("p", { className: "note", textContent: t("requiredChartNote") }) : "",
     table,
     rows.some((r) => r.is_derived) ? el("p", { className: "note", textContent: t("requiredDerivedNote") }) : "",
     el("p", { className: "note", textContent: t("requiredGapNote") }),
     cardFoot([[t("srcRequired"), rows.length ? rows[rows.length - 1].source_url : null]], lastMeeting ? t("requiredUpdated", lastMeeting) : "",
       downloadButton(`taiwan-required-unit-price-${mode === "incl" ? "incl-tax" : "excl-tax"}.csv`, csv)),
   ]);
+  // 收合時看不到寬度，要展開後才畫圖
+  details.addEventListener("toggle", () => { requiredOpen = details.open; if (details.open && rows.length >= 4) drawChart(); });
+  if (requiredOpen && rows.length >= 4) requestAnimationFrame(drawChart);
   return details;
 }
