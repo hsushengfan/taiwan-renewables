@@ -5,6 +5,7 @@
 //   2. 折線圖：平均費率合計 vs 再生能源（不排碳）費率合計
 //   3. 表格：兩種費率的完整數字（換算值加註）
 //   4. 說明：四項費用是什麼、誰要付哪幾項
+//   每年的台電公告原檔（PDF）存在網站裡（site/files/wheeling/），表格的年份和圖下方都可以點開
 //
 // 資料是人工整理的（見 supabase/migrations/010_electricity_price.sql），用 api_wheeling() 讀。
 // 資料庫存的是未稅值；這一頁預設顯示未稅。
@@ -37,6 +38,19 @@ const years2text = (ys) => ys.join(getLang() === "en" ? ", " : "、");
 
 export function render(root, ctx, data) {
   const rates = data.wheeling.rates;
+  const docs = data.wheeling.docs || [];
+  const doc = (yr) => docs.find((x) => x.year === yr) || null;
+  // 年份連到當年的台電公告原檔（沒有原檔的年份只顯示數字）
+  const yearCell = (yr) => {
+    const x = doc(yr);
+    return x ? el("a", { href: x.pdf_path, target: "_blank", rel: "noopener", textContent: yr, title: t("whDocTitle", yr, x.announced_on, x.doc_no) }) : document.createTextNode(String(yr));
+  };
+  const docList = docs.length ? el("p", { className: "doclinks" }, [
+    document.createTextNode(t("whDocs")),
+    ...docs.flatMap((x, i) => [i ? document.createTextNode(" ") : "", el("a", {
+      href: x.pdf_path, target: "_blank", rel: "noopener", className: "chip", textContent: `${x.year} PDF`, title: t("whDocTitle", x.year, x.announced_on, x.doc_no),
+    })]),
+  ]) : "";
   const mode = taxMode("excl");
   const tax = taxLabel(mode);
   const rerender = () => render(root, ctx, data);
@@ -47,7 +61,9 @@ export function render(root, ctx, data) {
   const xs = Array.from({ length: Math.max(...years) - Math.min(...years) + 1 }, (_, i) => Math.min(...years) + i);
   const row = (list, yr) => list.find((r) => r.year === yr) || null;
   const lastYear = Math.max(...years);
-  const src = rates[0] ? [[pick(rates[0], "source"), rates[0].source_url]] : [];
+  // 資料來源：每一列記錄的來源（去掉重複），例如能源署審議資料、台電公告
+  const src = [];
+  rates.forEach((r) => { const l = pick(r, "source"); if (!src.some(([x]) => x === l)) src.push([l, r.source_url]); });
   const updated = t("whUpdated", lastYear);
   const derivedYears = [...new Set(rates.filter((r) => r.is_derived).map((r) => r.year))];
 
@@ -95,8 +111,9 @@ export function render(root, ctx, data) {
   const reDerivedYears = [...new Set(re.filter((r) => r.is_derived).map((r) => r.year))];
   const stackCard = el("section", { className: "card" }, [
     el("div", { className: "cardhead" }, [el("h2", { textContent: t("whStackTitle", tax) }), el("span", { className: "sub", textContent: t("whStackHint") })]),
-    toggles, stackBox,
+    toggles, stackBox, docList,
     partialYears.length ? el("p", { className: "note", textContent: t("whPartialYears", years2text(partialYears)) }) : "",
+    xs.some((yr) => !row(re, yr)) ? el("p", { className: "note", textContent: t("whGapNote", years2text(xs.filter((yr) => !row(re, yr)))) }) : "",
     reDerivedYears.length ? el("p", { className: "note", textContent: t("whDerivedYears", years2text(reDerivedYears)) }) : "",
     cardFoot(src, updated, downloadButton(`taiwan-wheeling-rate-renewable-components-${fileTax(mode)}.csv`, stackCsv)),
   ]);
@@ -136,7 +153,7 @@ export function render(root, ctx, data) {
     const name = el("td", { className: "c", textContent: r.fuel_type === "average" ? t("whAverage") : t("whRe") });
     if (r.is_derived) name.append(el("span", { className: "badge", textContent: t("whDerived") }));
     return el("tr", {}, [
-      el("td", { textContent: r.year }), name,
+      el("td", {}, [yearCell(r.year)]), name,
       ...PARTS.map(([f]) => el("td", { textContent: fix(applyTax(r[f], mode)), className: r[f] == null ? "dim" : "" })),
       el("td", { textContent: fix(applyTax(r.total, mode)) }),
     ]);
