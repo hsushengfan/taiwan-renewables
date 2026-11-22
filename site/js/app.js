@@ -7,6 +7,8 @@
 //   #about                  關於／計算方法    views/about.js
 //   #price                  電價走勢          views/price.js
 //   #wheeling               轉供費率          views/wheeling.js
+//   #companies              業者排名          views/companies.js
+//   #company-12             業者小檔案        views/company.js
 //
 // 每一頁都有兩個函式：
 //   load(ctx, ...)    向 Supabase 讀這一頁需要的資料
@@ -22,6 +24,8 @@ import * as unit from "./views/unit.js";
 import * as about from "./views/about.js";
 import * as price from "./views/price.js";
 import * as wheeling from "./views/wheeling.js";
+import * as companies from "./views/companies.js";
+import * as company from "./views/company.js";
 import { initAnalytics, trackPage, trackEvent } from "./analytics.js";
 
 // 時間範圍：往回看幾小時、用哪種粒度
@@ -38,6 +42,8 @@ function parseRoute() {
   if (h === "about") return { view: about, arg: null, key: h };
   if (h === "price") return { view: price, arg: null, key: h };
   if (h === "wheeling") return { view: wheeling, arg: null, key: h };
+  if (h === "companies") return { view: companies, arg: null, key: h };
+  if ((m = h.match(/^company-(\d+)$/))) return { view: company, arg: Number(m[1]), key: h };
   // 看不懂的網址（例如打錯字）：回到總覽，並顯示提示，不要默默跳回去讓人以為壞掉了
   return { view: overview, arg: null, key: "", unknown: h !== "" };
 }

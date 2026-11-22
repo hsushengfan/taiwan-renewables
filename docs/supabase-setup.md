@@ -301,6 +301,32 @@ GitHub Actions 的備援已停用自動排程（從來沒有成功收到過資�
 
 ---
 
+## 業者排名的 T-REC 資料（每月自動抓）
+
+業者排名頁的資料來自 T-REC（國家再生能源憑證中心），由 Edge Function `trec-sync` 每月 15 日台北時間 03:17 自動抓。
+寄信沿用新機組通知的 Resend 設定，不用再設定 Secrets。規格見 `docs/specs/companies.md`。
+
+設定步驟（只要做一次）：
+
+1. **建資料表**：執行 `supabase/migrations/015_companies.sql`（SQL Editor 開新分頁，整份貼上，下拉選單選 Database，按 Run）。
+   最後應該看到售電業 20、發電業 20、台電 1、排除 1。
+2. **部署 Edge Function**：左邊選單 **Edge Functions** → **Deploy a new function** → **Via Editor**，
+   名稱填 `trec-sync`，貼上 `supabase/functions/trec-sync/index.ts` 的全部內容，按 **Deploy**。
+3. **第一次匯入（分兩批）**：在 `trec-sync` 的頁面按 **Test**，Method 選 **POST**，
+   - 第一批 Request Body 填 `{"years": [2020, 2021, 2022, 2023, 2024]}`，按 **Send Request**。回應是 `{"started": true, …}`，
+     函式會在背景抓，大約 1 分鐘。到 SQL Editor 執行 `select * from trec_sync_runs order by id desc limit 5;`，`status` 變成 `ok` 再做下一批。
+   - 第二批填 `{"years": [2025, 2026]}`，一樣等 `status` 變成 `ok`。
+4. **設定每月排程**：執行 `supabase/migrations/016_trec_schedule.sql`。
+
+**收到信怎麼辦：**
+
+- 「驗算不符，這次沒有更新」：T-REC 可能正在更新資料。資料庫維持上一次的資料。過幾天在 `trec-sync` 頁面按 Test、
+  Body 填 `{}` 手動再跑一次；一直不符就告訴 Claude。
+- 「同步失敗」（例如 HTTP 403、419）：可能被 T-REC 擋掉。告訴 Claude，改用在瀏覽器下載資料的備案。
+- 「新業者可能擠進前 20 名」：確認它是售電業、發電業，還是不列入排名，告訴 Claude 或在 SQL Editor 改 `companies.role`。
+
+---
+
 ## 常用查詢
 
 ```sql

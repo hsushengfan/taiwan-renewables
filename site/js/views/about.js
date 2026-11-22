@@ -105,6 +105,17 @@ const CONTENT = {
 </section>
 
 <section class="card prose">
+  <h3>業者排名</h3>
+  <ul>
+    <li>「<a href="#companies">業者</a>」頁依 T-REC（國家再生能源憑證中心）公開的<b>直轉供憑證成交紀錄</b>，依<b>出售單位</b>加總 2020 年至今的移轉量，排出售電業和發電業各前 20 名（排除台電）。不用憑證持有人排名，因為持有人和出售單位不一定是同一家。</li>
+    <li>售電業或發電業以能源署公布的名單為準。大彰化西北離岸風力發電還沒列入發電廠名單，本站依實際營運列為發電業並加註。</li>
+    <li>能源別、賣出過的案場數、裝置容量，都用這家公司賣出過的案場計算；裝置容量用案場編號對到已發放憑證。</li>
+    <li>每月 15 日自動更新，今年和去年都重抓。每次都驗算筆數、T-REC 公布的總量，以及「已發放＝直轉供＋自用發電設備＋尚未移轉」，不相符就不更新。</li>
+    <li><b>限制：</b>憑證交給售電業代管的發電業看不到；大型離岸風場大多躉售給台電、沒有憑證；累計量對越早開始的業者越有利；業者分類依能源署名單，有更新時間差。</li>
+  </ul>
+</section>
+
+<section class="card prose">
   <h3>隱私</h3>
   <p>本網站用 <a href="https://www.goatcounter.com" target="_blank" rel="noopener">GoatCounter</a> 統計瀏覽次數。它不使用 cookie，也不記錄可以辨識個人的資訊。網站沒有登入功能，不收集任何個人資料。</p>
 </section>
@@ -198,6 +209,17 @@ const CONTENT = {
     <li><b>Required unit price</b> is Taipower's estimate of the price level under the price formula (submitted to the review committee; not an actual price). It is compiled meeting by meeting from Taipower's slides for each Energy Administration price review meeting since 2015 (23 meetings). For four meetings in 2023–2024 Taipower's slides do not state the figure, only total cost and electricity sold, so it is calculated as total cost ÷ electricity sold. No figure was submitted in 2017, and 2015–2016 used the old price formula.</li>
     <li><b>Including or excluding tax:</b> all figures are stored excluding tax; including tax = excluding tax × 1.05. Taipower does not state whether the average unit price includes tax. This site treats it as excluding tax based on three pieces of evidence: (1) it almost matches the "average price per kWh" in the final accounts, whose operating revenue excludes business tax; (2) the average price published by the review committee is about 5% below the tax-inclusive tariff; (3) the wheeling rate formula states that "results exclude business tax, which is added when the rates are announced". The unit cost has no tax component and does not change with the toggle.</li>
     <li><b>Update frequency:</b> average unit price yearly, unit cost monthly, wheeling rates every December, price adjustments after the March and September reviews.</li>
+  </ul>
+</section>
+
+<section class="card prose">
+  <h3>Company rankings</h3>
+  <ul>
+    <li>The <a href="#companies">Companies</a> page ranks the top 20 renewable electricity retailers and generators (Taipower excluded) by summing <b>direct-supply certificate transfers</b> since 2020 by <b>seller</b>, using public data from T-REC (National Renewable Energy Certification Center). Certificate holders are not used because the holder and the seller are not always the same company.</li>
+    <li>Whether a company is a retailer or a generator follows the Energy Administration's published lists. Greater Changhua Northwest offshore wind is not yet on the power plant list; this site lists it as a generator based on its actual operation and marks it.</li>
+    <li>Energy type, number of plants and capacity are based on the plants the company has sold from; capacity is matched to issued certificates by plant ID.</li>
+    <li>Updated automatically on the 15th of each month, fetching this year and last year again. Each update checks row counts, T-REC's published totals, and that issued = direct supply + self-use + not yet transferred; if anything does not match, the update is skipped.</li>
+    <li><b>Limitations:</b> generators that let a retailer manage their certificates are not visible; most large offshore wind farms sell to Taipower under feed-in tariffs and have no certificates; totals favour companies that started earlier; classification follows the Energy Administration's lists, which are updated with some delay.</li>
   </ul>
 </section>
 
