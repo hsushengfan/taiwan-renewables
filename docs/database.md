@@ -466,6 +466,7 @@ T-REC 的三份資料由 Edge Function `trec-sync` 每月 15 日自動抓；業�
 
 #### `companies`：業者基本資料
 
+- 每家的年報、月報公開頁網址存在 `disclosure_url`（`018_company_disclosure_urls.sql`；前 40 名裡 39 家有，花蓮綠能還沒找到）。
 - **一筆資料代表**：一家公司。先放規格第 3 節的 40 家（售電業、發電業各 20）、各類第 21 名以後量比較大的 10 家
   （售電業 2、發電業 8，避免每月同步時被當成新業者通知），加上台電、中華紙漿。
   2026-11-23 用能源署的兩份名單（售電業更新日 115-10-02、發電廠更新日 115-01-26）逐家核對過。
@@ -518,7 +519,7 @@ T-REC 的三份資料由 Edge Function `trec-sync` 每月 15 日自動抓；業�
 #### `company_reports` 與 `company_financials`
 
 - `company_reports`：一份年報或月報的連結（`report_type` 是 `annual`／`monthly`，
-  `status` 是 `found`／`page_only`／`not_found`）。資料來自 `data/company_reports.csv`，用 `017_company_reports.sql` 匯入（2026-11-23：40 家、406 列）。
+  `status` 是 `found`／`page_only`／`not_found`）。資料來自 `data/company_reports.csv`，用 `017_company_reports.sql` 匯入（2026-11-23：40 家、639 列）。
   `page_only`（只找到列表頁）和 `not_found`（找不到）那一列代表整家公司，年份只是佔位、月份是空的，`note` 寫找過哪裡。
   找不到或只找到一部分的公司列在 `docs/company-reports-todo.md`。
 - 第 3 階段用的表先建好。`company_financials`：一家一年的購電量、售電量（度）和收入、成本（元），
