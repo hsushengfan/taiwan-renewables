@@ -160,3 +160,15 @@ details.collapse[open] summary{margin-bottom:8px}
 details.collapse .subhead{font-size:14px;font-weight:600;margin:16px 0 6px}
 .doclinks{font-size:13px;color:var(--ink2);margin:10px 0 0;line-height:2}
 .doclinks .chip{text-decoration:none}
+
+/* 業者排名頁、小檔案頁 */
+th .thsort{border:0;background:none;font:inherit;color:inherit;padding:0;cursor:pointer;text-align:inherit}
+th .thsort:hover{color:var(--ink)}
+th[aria-sort="ascending"],th[aria-sort="descending"]{color:var(--ink)}
+td.sortcol{font-weight:600}
+.ranktable .sticky{position:sticky;left:0;background:var(--surface);z-index:1;box-shadow:1px 0 0 var(--grid)}
+.chart text.barname{fill:var(--ink);font-size:12px}
+.chart a text.barname{fill:var(--g4)}
+.chip.more{margin-top:10px}
+.ranktable th,.ranktable td{padding:7px 6px;font-size:13px}
+.ranktable th{font-size:12px}

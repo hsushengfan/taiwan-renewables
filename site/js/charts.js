@@ -502,3 +502,85 @@ export function timelineChart(container, { events, startYear, endYear, lanes, se
     svg.append(gx);
   });
 }
+
+// ---------------------------------------------------------------------
+// 橫向長條圖（業者排名頁）：一家業者一條，名稱在左邊，長條可以依年份堆疊
+//   rows：[{ label, href（點名稱連到小檔案頁，可省略）, values（和 layers 對齊，沒有資料是 null） }]
+//   layers：[{ label, color }]，例如每一年一層；只有一層時就是單純的長條
+//   format(值) → 數字的文字；title(第幾列) → 提示框的標題
+//   長條右邊標「這一列的合計」。提示框顯示每一層的數字。
+// ---------------------------------------------------------------------
+export function hbarChart(container, { rows, layers, label, format, title = (i) => rows[i].label }) {
+  container.classList.add("chart");
+  const svg = svgEl("svg", { role: "img", "aria-label": label });
+  const tip = el("div", { className: "tip", hidden: true });
+  container.replaceChildren(svg, tip);
+  const W = container.clientWidth || 800;
+  const rowH = 22, top = 4, bottom = 22;
+  const L = Math.min(120, Math.max(72, W * 0.22));   // 名稱欄的寬度（手機上窄一點）
+  const R = 64;                                       // 長條右邊留空間標數字
+  const H2 = top + rows.length * rowH + bottom;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H2}`);
+  svg.style.height = H2 + "px";
+  const totals = rows.map((r) => r.values.reduce((a, v) => a + (v ?? 0), 0));
+  const max = Math.max(...totals, 1);
+  const iw = W - L - R;
+  const x = (v) => L + (v / max) * iw;
+
+  // 縱向格線和刻度（0、最大值的一半、最大值附近的整數）
+  const step = [1, 2, 5].map((m) => m * 10 ** Math.floor(Math.log10(max / 3))).find((s) => max / s <= 4) || max;
+  for (let v = 0; v <= max * 1.0001; v += step) {
+    svg.append(svgEl("line", { x1: x(v), x2: x(v), y1: top, y2: H2 - bottom, stroke: cssVar(v === 0 ? "--axis" : "--grid"), "stroke-width": 1 }));
+    const t = svgEl("text", { x: x(v), y: H2 - 6, "text-anchor": v === 0 ? "start" : "middle" });
+    t.textContent = v >= 1e6 ? `${+(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${+(v / 1e3).toFixed(0)}K` : String(v);
+    svg.append(t);
+  }
+
+  rows.forEach((r, i) => {
+    const y = top + i * rowH;
+    const name = svgEl("text", { x: L - 6, y: y + rowH / 2 + 4, "text-anchor": "end", class: "barname" });
+    name.textContent = r.label;
+    if (r.href) {
+      const a = svgEl("a", { href: r.href });
+      a.append(name);
+      svg.append(a);
+    } else svg.append(name);
+    let base = 0;
+    r.values.forEach((v, k) => {
+      if (!v) return;
+      svg.append(svgEl("rect", { x: x(base), y: y + 4, width: Math.max(x(base + v) - x(base) - 1, 0.5), height: rowH - 8, fill: layers[k].color }));
+      base += v;
+    });
+    const val = svgEl("text", { x: x(totals[i]) + 4, y: y + rowH / 2 + 4, class: "barlabel" });
+    val.textContent = totals[i] ? format(totals[i]) : "—";
+    svg.append(val);
+  });
+
+  // 提示框：滑鼠在哪一列，就顯示那一列每一層的數字
+  const hl = svgEl("rect", { x: 0, width: W, height: rowH, fill: cssVar("--ink"), "fill-opacity": 0.05, visibility: "hidden" });
+  svg.insertBefore(hl, svg.firstChild);
+  const show = (clientX, clientY) => {
+    const rect = svg.getBoundingClientRect();
+    const py = ((clientY - rect.top) / rect.height) * H2;
+    const i = Math.floor((py - top) / rowH);
+    if (i < 0 || i >= rows.length) { hide(); return; }
+    hl.setAttribute("y", top + i * rowH); hl.setAttribute("visibility", "visible");
+    tip.replaceChildren(el("div", { className: "t", textContent: title(i) }));
+    layers.forEach((l, k) => {
+      const v = rows[i].values[k];
+      if (v == null) return;
+      const key = el("i", { className: "k" });
+      key.style.background = l.color;
+      tip.append(el("div", { className: "r" }, [el("span", {}, [key, document.createTextNode(l.label)]), el("b", { textContent: format(v) })]));
+    });
+    if (layers.length > 1) tip.append(el("div", { className: "r tot" }, [el("span", { textContent: t("total") }), el("b", { textContent: format(totals[i]) })]));
+    tip.hidden = false;
+    const scale = rect.width / W, w = tip.offsetWidth;
+    const left = ((clientX - rect.left) / rect.width) * W * scale + 12;
+    tip.style.left = Math.max(0, Math.min(left, rect.width - w)) + "px";
+    tip.style.top = ((top + (i + 1) * rowH) * (rect.height / H2) + 4) + "px";
+  };
+  const hide = () => { tip.hidden = true; hl.setAttribute("visibility", "hidden"); };
+  svg.addEventListener("pointermove", (e) => show(e.clientX, e.clientY));
+  svg.addEventListener("pointerleave", hide);
+}

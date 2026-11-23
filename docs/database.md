@@ -15,8 +15,9 @@
 
 ## 1. 一眼看懂
 
-資料庫裡有 15 張資料表、1 個 view，另外在 Storage（雲端硬碟）存原始檔。
-其中 9 張和「即時發電資料」有關（下表上半部），6 張是人工整理的「電價與轉供費率」（下表下半部，見第 4 節最後）。
+資料庫裡有 24 張資料表、3 個 view，另外在 Storage（雲端硬碟）存原始檔。
+其中 9 張和「即時發電資料」有關（下表上半部），6 張是人工整理的「電價與轉供費率」，
+9 張是「業者排名」（T-REC 憑證資料和業者名單，下表最下面，見第 4 節最後）。
 
 | 名稱 | 種類 | 一筆資料代表什麼 | 原始還是算出來的 |
 |---|---|---|---|
@@ -37,6 +38,17 @@
 | [`wheeling_rates`](#wheeling_rates轉供費率) | 資料表 | 某一年某一種轉供費率（平均、再生能源、各燃料別） | **人工整理的原始資料** |
 | [`wheeling_rate_docs`](#wheeling_rate_docs轉供費率的台電公告原檔) | 資料表 | 某一年台電公告的費率方案原檔（PDF） | **人工整理的原始資料** |
 | [`required_unit_prices`](#required_unit_prices應有單價) | 資料表 | 一場審議會上台電提報的應有單價 | **人工整理的原始資料** |
+| [`companies`](#companies業者基本資料) | 資料表 | 一家售電業或發電業者 | **人工整理的原始資料** |
+| [`trec_certificates`](#trec_certificatest-rec-已發放憑證) | 資料表 | T-REC 某個案場某一年發放的憑證 | **原始資料**（每月自動抓） |
+| [`trec_direct_supply`](#trec_direct_supplyt-rec-直轉供成交紀錄) | 資料表 | 一年內某出售單位把某案場的憑證賣給某買方 | **原始資料**（每月自動抓） |
+| [`trec_self_use_trades`](#trec_self_use_tradest-rec-自用發電設備成交紀錄) | 資料表 | 一筆自用發電設備的憑證成交 | **原始資料**（每月自動抓） |
+| [`trec_year_totals`](#trec_year_totals每一年的驗算) | 資料表 | 某一年三份 T-REC 資料的總量驗算 | 系統紀錄 |
+| [`trec_sync_runs`](#trec_sync_runs與-trec_staging) | 資料表 | 每月自動抓取執行了一次 | 系統紀錄 |
+| [`trec_staging`](#trec_sync_runs與-trec_staging) | 資料表 | 自動抓取時的暫存區（平常是空的） | 系統暫存 |
+| [`company_reports`](#company_reports與-company_financials) | 資料表 | 一份業者的年報或月報（連結） | **人工整理的原始資料**（第 2 階段） |
+| [`company_financials`](#company_reports與-company_financials) | 資料表 | 一家業者一年的財務數字 | **人工整理的原始資料**（第 3 階段） |
+| [`company_rankings`](#view-company_rankings與-trec_unknown_sellers) | view | 售電業、發電業各自依累計直轉供移轉量排名 | **算出來的** |
+| [`trec_unknown_sellers`](#view-company_rankings與-trec_unknown_sellers) | view | T-REC 上有、但業者名單沒有的公司 | **算出來的** |
 
 **view 是什麼？** view 不存資料，它是一個「存起來的查詢」。
 每次讀它，資料庫才去 `readings` 拿資料現算。所以 view 不佔空間，內容也永遠是最新的。
@@ -446,6 +458,76 @@ select refresh_category_readings();
 
 ---
 
+### 業者排名（T-REC 憑證資料）
+
+規格見 `docs/specs/companies.md`，定義在 `015_companies.sql`、排程在 `016_trec_schedule.sql`。
+T-REC 的三份資料由 Edge Function `trec-sync` 每月 15 日自動抓；業者名單和分類是人工整理的。
+單位：電量都是 **MWh**（1 MWh ＝ 1,000 度），裝置容量是 **kW**。
+
+#### `companies`：業者基本資料
+
+- **一筆資料代表**：一家公司。先放規格第 3 節的 40 家（售電業、發電業各 20）、各類第 21 名以後量比較大的 10 家
+  （售電業 2、發電業 8，避免每月同步時被當成新業者通知），加上台電、中華紙漿。
+  2026-11-23 用能源署的兩份名單（售電業更新日 115-10-02、發電廠更新日 115-01-26）逐家核對過。
+- **分類 `role`**：`retailer` 售電業｜`generator` 發電業｜`taipower` 台電（排除）｜`excluded` 不在能源署名單（例如自用發電設備）｜
+  `pending` 自動抓取時發現、可能擠進前 20 名的新業者，**等使用者確認**（不列入排名）。
+  分類以能源署公布的名單為準；確認後在 SQL Editor 改 `role`（例如 `update companies set role = 'retailer' where name_zh = '…';`）。
+
+| 欄位 | 意思 |
+|---|---|
+| `id` | 編號（網址 `#company-12` 的數字） |
+| `name_zh` | 全名，和 T-REC 上的名稱完全一樣（排名靠它對應） |
+| `short_name_zh`、`name_en` | 網站上顯示的簡稱、英文名稱（英文名稱還沒有時顯示中文簡稱） |
+| `role` | 分類（見上） |
+| `registry_checked_on`、`registry_note` | 和能源署名單核對的日期、備註（例如「尚未列入能源署發電廠名單」） |
+| `website`、`disclosure_url`、`stock_code` | 官網、電業法第 66 條公開資訊頁、上市櫃代號 |
+| `note_zh`、`note_en` | 備註 |
+
+#### `trec_certificates`：T-REC 已發放憑證
+
+- **一筆資料代表**：某個案場某一年發放的憑證。主鍵 `(year, case_id)`：T-REC 的案場編號。
+  不用案場名稱，因為同一個持有人可能有兩個同名案場（例如國泰人壽）。
+- 欄位：`holder_name` 憑證持有人、`case_name`、`energy`、`capacity_kw` 裝置容量、
+  `issued_mwh` 發放量（＝ `traded_mwh` 已移轉 ＋ `remaining_mwh` 尚未移轉）、`as_of` 資料月份（例如 `2026-11`）、`fetched_at`。
+
+#### `trec_direct_supply`：T-REC 直轉供成交紀錄
+
+- **一筆資料代表**：一年內某出售單位把某案場的憑證賣給某買方。主鍵 `(year, seller_id, buyer_id, case_id)`（都是 T-REC 的編號）。
+- 欄位：`seller_name` 出售單位（**排名就是依它加總**）、`buyer_name`、`owner` 案場業主、`case_name`、`energy`、
+  `parallel_type`（轉供／併網型直供／獨立型直供）、`power_mwh`、`as_of`、`fetched_at`。
+
+#### `trec_self_use_trades`：T-REC 自用發電設備成交紀錄
+
+- **一筆資料代表**：工廠屋頂等自用發電設備把憑證單獨賣掉的一筆成交（對帳用，不列入排名）。
+  T-REC 沒有給編號，所以用流水號 `id`；每次同步整年刪掉重寫。
+- 欄位：`seller_name`、`buyer_name`、`case_name`、`energy`、`power_mwh`、`traded_on`、`as_of`、`fetched_at`。
+
+#### `trec_year_totals`：每一年的驗算
+
+- **一筆資料代表**：某一年。`*_published` 是 T-REC 公布的總量，`*_sum` 是我們逐筆加總，`*_rows` 是筆數。
+  三份資料：`cert` 已發放憑證、`direct` 直轉供、`self` 自用發電設備；`remaining_sum` 是尚未移轉的加總。
+- `identity_diff`（自動算）＝ 已發放 − 直轉供 − 自用 − 尚未移轉，應該是 0。
+- 查驗算：`select * from trec_year_totals order by year;`
+
+#### `trec_sync_runs` 與 `trec_staging`
+
+- `trec_sync_runs`：每次自動抓取一筆，`status` 是 `running`／`ok`／`failed`，`message` 寫原因或抓了幾筆。
+  查最近幾次：`select * from trec_sync_runs order by id desc limit 5;`
+- `trec_staging`：自動抓取時先把資料放這裡，全部驗算通過才由 `trec_commit()` 一次搬進正式資料表。平常是空的。
+
+#### `company_reports` 與 `company_financials`
+
+- 第 2、3 階段用，先建好。`company_reports`：一份年報或月報的連結（`report_type` 是 `annual`／`monthly`，
+  `status` 是 `found`／`page_only`／`not_found`）。`company_financials`：一家一年的購電量、售電量（度）和收入、成本（元），
+  附報告和頁碼。發電業要用的欄位等第 3 階段再加。
+
+#### view `company_rankings` 與 `trec_unknown_sellers`
+
+- `company_rankings`：`companies` 裡分類是售電業、發電業的公司，各自依**出售單位的累計直轉供移轉量**排名（`rank`）。
+  附逐年移轉量 `sold_by_year`、第一次成交的年份、能源別、賣出過的案場數、裝置容量（用案場編號對到已發放憑證，取最新一年；
+  `cap_matched` 是對到的案場數），以及以持有人身分拿到的憑證 `issued_mwh`、尚未移轉 `remaining_mwh`。
+- `trec_unknown_sellers`：T-REC 上出現、但 `companies` 沒有的出售單位和持有人，依累計移轉量排序。用來發現新業者。
+
 ## 5. 自動執行的排程
 
 排程由 pg_cron（資料庫內建的鬧鐘）執行。pg_cron 的時間是 UTC，比台灣時間慢 8 小時。
@@ -456,6 +538,8 @@ select refresh_category_readings();
 | `refresh-daily-stats` | 每小時的第 20 分 | 重算 `daily_unit_stats` 的今天和昨天 | `003_daily_stats.sql` |
 | `usage-report` | 每天台灣時間 09:07 | 呼叫 Edge Function `usage-report`：記錄用量；每月 1 號寄用量報告，第一次超過 70%／85%／95% 時寄警告信 | `009_usage_report.sql` |
 | `cleanup-logs` | 每天台灣時間 03:07 | 刪除 90 天前的 `collection_runs`、7 天前的排程執行紀錄 | `002_schedule.sql` |
+| `trec-sync-monthly` | 每月 15 日台灣時間 03:17 | 呼叫 Edge Function `trec-sync`：抓 T-REC 今年和去年的資料，驗算通過才更新；驗算不符或發現新業者時寄信 | `016_trec_schedule.sql` |
+| `cleanup-trec-sync-runs` | 每月 15 日台灣時間 03:27 | 刪除 3 年前的 `trec_sync_runs` | `016_trec_schedule.sql` |
 
 ## 6. 資料庫裡的函式
 
@@ -474,6 +558,7 @@ select refresh_category_readings();
 | `missing_slots(days)` | 列出最近幾天缺了哪些時間點。用法：`select * from missing_slots(2);` |
 | `classify_remark(remark)` | 查某個備註對應的狀態代碼 |
 | `parse_taipower_number(text)` | 把台電的數字字串轉成數字（`"742.7"` → 742.7，`"-"` → 空值） |
+| `trec_commit(run_id, as_of, totals)` | T-REC 自動抓取用：把暫存區裡驗算通過的年份，一次換掉正式資料表裡那幾年的資料（中途出錯就全部不改） |
 
 ## 7. 誰可以讀寫，以及網站怎麼讀資料
 
@@ -494,6 +579,8 @@ select refresh_category_readings();
 | `api_daily(開始日, 結束日, 分類, 機組)` | 每日彙總（發電量、容量因數等） | 沒指定機組最多 62 天；指定單一機組最多 5 年 |
 | `api_price()` | 電價走勢頁的全部資料：`avg_unit_prices`、`unit_costs`、`adjustments`、`required` | 沒有參數（資料量很小，一次全部回傳） |
 | `api_wheeling()` | 轉供費率頁的資料：`rates`（各年各種費率）、`docs`（每年的台電公告原檔） | 沒有參數 |
+| `api_company_rankings()` | 業者排名頁：資料月份 `as_of`、年份、售電業和發電業各前 20 名、每年的 T-REC 總量 | 沒有參數 |
+| `api_company(id)` | 業者小檔案頁：基本資料和排名、逐年數字、賣出過的案場、報告、財務推估。找不到（或不是售電業、發電業）回傳空值 | 一次一家 |
 
 `hour` 和 `day` 粒度回傳的是那段時間內每 10 分鐘數值的平均。
 

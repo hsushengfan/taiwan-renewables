@@ -40,3 +40,9 @@ export const getPrice = () => rpc("api_price");
 
 // 轉供費率頁：輸配電業各項費率（未稅）
 export const getWheeling = () => rpc("api_wheeling");
+
+// 業者排名頁：售電業、發電業前 20 名（T-REC 資料，每月更新）
+export const getCompanyRankings = () => rpc("api_company_rankings");
+
+// 業者小檔案頁：一家業者的逐年數字、案場、報告（找不到是 null）
+export const getCompany = (id) => rpc("api_company", { p_id: id });
