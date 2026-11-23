@@ -65,7 +65,7 @@ export function render(root, ctx, data) {
   const head = el("div", { className: "pagehead" }, [
     crumbs([[t("navOverview"), "#"], [t("navCompanies")]]),
     el("h2", { className: "pagetitle", textContent: t("coTitle") }),
-    el("p", { className: "sub", textContent: t("coLead") + (d.as_of ? `　${t("coAsOf", d.as_of)}` : "") }),
+    el("p", { className: "sub", textContent: t("coLead") + (d.as_of ? `${getLang() === "en" ? " · " : "　"}${t("coAsOf", d.as_of)}` : "") }),
   ]);
 
   // ---- 分頁 ----

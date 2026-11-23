@@ -316,6 +316,8 @@ GitHub Actions 的備援已停用自動排程（從來沒有成功收到過資�
    - 第一批 Request Body 填 `{"years": [2020, 2021, 2022, 2023, 2024]}`，按 **Send Request**。回應是 `{"started": true, …}`，
      函式會在背景抓，大約 1 分鐘。到 SQL Editor 執行 `select * from trec_sync_runs order by id desc limit 5;`，`status` 變成 `ok` 再做下一批。
    - 第二批填 `{"years": [2025, 2026]}`，一樣等 `status` 變成 `ok`。
+   - 年份還不齊（例如只匯入第一批）時，不會檢查新業者：那時累計量不完整，門檻會算得太低。
+   - 這個函式只接受 POST（排程和 Test 按鈕都是）。直接用瀏覽器打開函式網址不會觸發抓取。
 4. **設定每月排程**：執行 `supabase/migrations/016_trec_schedule.sql`。
 
 **收到信怎麼辦：**
