@@ -519,8 +519,12 @@ T-REC 的三份資料由 Edge Function `trec-sync` 每月 15 日自動抓；業�
 #### `company_reports` 與 `company_financials`
 
 - `company_reports`：一份年報或月報的連結（`report_type` 是 `annual`／`monthly`，
-  `status` 是 `found`／`page_only`／`not_found`）。資料來自 `data/company_reports.csv`，用 `017_company_reports.sql` 匯入（2026-11-23：40 家、1199 列）。
-  `page_only`（只找到列表頁）和 `not_found`（找不到）那一列代表整家公司，年份只是佔位、月份是空的，`note` 寫找過哪裡。
+  `status` 是 `found`（找到）／`page_only`（只找到列表頁）／`not_found`（找不到）／`broken`（連結失效）。
+  資料來自 `data/company_reports.csv`，用 `017_company_reports.sql` 匯入（2026-11-23：40 家、1573 列）。
+  - `year`、`month` 都是空值的列代表**整家公司**（例如整家都找不到），不是某一份報告；`note` 寫原因。
+    （`019_report_status_broken.sql` 起 `year` 可以是空值，以前用 2025 年當佔位。）
+  - 有年份的 `not_found` 是**某一份報告**找不到，例如官網放錯檔案、連結要登入；`url` 是空的，`note` 寫原因。
+  - `broken`（019 新增）：之前找到、後來抽查打不開或要登入的連結。`url` 留著做紀錄，網站上顯示「連結失效」、不放連結。
   找不到或只找到一部分的公司列在 `docs/company-reports-todo.md`。
 - 第 3 階段用的表先建好。`company_financials`：一家一年的購電量、售電量（度）和收入、成本（元），
   附報告和頁碼。發電業要用的欄位等第 3 階段再加。
