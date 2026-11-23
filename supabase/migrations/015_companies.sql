@@ -5,7 +5,7 @@
 --   每家業者有自己的小檔案頁。T-REC 的資料由 Edge Function trec-sync 每月自動抓（排程見 016）。
 --
 -- 做了什麼：
---   1. companies              業者基本資料（先放規格第 3 節的 40 家，加上台電、中華紙漿）
+--   1. companies              業者基本資料（規格第 3 節的 40 家、各類第 21 名以後量比較大的 10 家、台電、中華紙漿）
 --   2. trec_certificates      T-REC 已發放憑證（一列＝一個案場的一年）
 --   3. trec_direct_supply     T-REC 直轉供成交紀錄（排名用；一列＝一年內某出售單位把某案場的憑證賣給某買方）
 --   4. trec_self_use_trades   T-REC 自用發電設備成交紀錄（對帳用）
@@ -29,6 +29,10 @@
 --    role：retailer 售電業｜generator 發電業｜taipower 台電（排除）
 --          excluded 不在能源署名單（例如自用發電設備）｜pending 自動抓取發現的新業者，等使用者確認分類
 --    分類以能源署公布的名單為準（售電業 menu_id=8887、民營再生能源發電廠 menu_id=1001）。
+--    2026-11-23 用使用者下載的兩份名單逐家核對（售電業名單更新日 115-10-02、發電廠名單更新日 115-01-26）：
+--      售電業、發電業前 20 名都和規格一致。大彰化西北不在發電廠名單（規格已知）。
+--      星星電力只在售電業名單（發電廠名單裡的「星星電力-…」是別家的案場名稱）。
+--      各類第 21 名以後、累計量達前 20 名門檻的 10 家也先放進來，這樣每月同步時不會被當成新業者通知。
 -- ---------------------------------------------------------------------
 create table if not exists companies (
   id                  serial primary key,
@@ -47,54 +51,66 @@ create table if not exists companies (
 
 insert into companies (name_zh, short_name_zh, role, registry_checked_on, registry_note, website, disclosure_url, stock_code, note_zh, note_en) values
   -- 售電業前 20 名（規格 3-1）
-  ('天能綠電股份有限公司',       '天能綠電',   'retailer', '2026-11-22', null, null, 'https://greenet.com.tw/additionalInfo.aspx', '7842', null, null),
-  ('台汽電綠能股份有限公司',     '台汽電綠能', 'retailer', '2026-11-22', null, null, null, null, null, null),
-  ('富威電力股份有限公司',       '富威電力',   'retailer', '2026-11-22', null, null, 'https://www.fwp.com.tw/Investor', '6994', '另見 https://www.shinfox.com.tw/report_foxwell.html', null),
-  ('星星電力股份有限公司',       '星星電力',   'retailer', '2026-11-22', null, null, 'https://startrade-power.com/downloads/', null, null, null),
-  ('續興股份有限公司',           '續興',       'retailer', '2026-11-22', null, null, 'https://sas-ses.energy/monthly-report/', null, null, null),
-  ('陽光伏特家電力股份有限公司', '陽光伏特家', 'retailer', '2026-11-22', null, null, 'https://electricitysunnyfounder.wordpress.com/', null, '舊月報另放 power-generation.sunnyfounder.com', null),
-  ('怡和綠電超商股份有限公司',   '怡和綠電',   'retailer', '2026-11-22', null, null, null, null, null, null),
-  ('艾涅爾電力股份有限公司',     '艾涅爾電力', 'retailer', '2026-11-22', null, null, 'https://annealenergy.com.tw/綠電公開資訊', null, null, null),
-  ('晨星電力股份有限公司',       '晨星電力',   'retailer', '2026-11-22', null, 'https://www.risingstarenergy.com.tw/', null, null, null, null),
-  ('阿波羅電力股份有限公司',     '阿波羅電力', 'retailer', '2026-11-22', null, null, 'https://re100.com.tw/電業年報/', '7911', null, null),
-  ('寶富電力股份有限公司',       '寶富電力',   'retailer', '2026-11-22', null, null, null, null, null, null),
-  ('大自然能源電業股份有限公司', '大自然能源', 'retailer', '2026-11-22', null, 'https://naturalpower.com.tw/', null, null, null, null),
-  ('能元超商股份有限公司',       '能元超商',   'retailer', '2026-11-22', null, null, null, null, null, null),
-  ('開陽電力股份有限公司',       '開陽電力',   'retailer', '2026-11-22', null, null, null, null, null, null),
-  ('花蓮綠能股份有限公司',       '花蓮綠能',   'retailer', '2026-11-22', null, null, null, null, null, null),
-  ('中曜股份有限公司',           '中曜',       'retailer', '2026-11-22', null, null, null, null, null, null),
-  ('康展電力股份有限公司',       '康展電力',   'retailer', '2026-11-22', null, null, null, null, null, null),
-  ('博曜電力股份有限公司',       '博曜電力',   'retailer', '2026-11-22', null, null, null, null, null, null),
-  ('大同智能股份有限公司',       '大同智能',   'retailer', '2026-11-22', null, 'https://www.tatungforeverenergy.com/', null, null, null, null),
-  ('瓦特先生股份有限公司',       '瓦特先生',   'retailer', '2026-11-22', null, null, 'https://www.mrwatt.com.tw/power-report', null, null, null),
+  ('天能綠電股份有限公司',       '天能綠電',   'retailer', '2026-11-23', null, null, 'https://greenet.com.tw/additionalInfo.aspx', '7842', null, null),
+  ('台汽電綠能股份有限公司',     '台汽電綠能', 'retailer', '2026-11-23', null, null, null, null, null, null),
+  ('富威電力股份有限公司',       '富威電力',   'retailer', '2026-11-23', null, null, 'https://www.fwp.com.tw/Investor', '6994', '另見 https://www.shinfox.com.tw/report_foxwell.html', null),
+  ('星星電力股份有限公司',       '星星電力',   'retailer', '2026-11-23', null, null, 'https://startrade-power.com/downloads/', null, null, null),
+  ('續興股份有限公司',           '續興',       'retailer', '2026-11-23', null, null, 'https://sas-ses.energy/monthly-report/', null, null, null),
+  ('陽光伏特家電力股份有限公司', '陽光伏特家', 'retailer', '2026-11-23', null, null, 'https://electricitysunnyfounder.wordpress.com/', null, '舊月報另放 power-generation.sunnyfounder.com', null),
+  ('怡和綠電超商股份有限公司',   '怡和綠電',   'retailer', '2026-11-23', null, null, null, null, null, null),
+  ('艾涅爾電力股份有限公司',     '艾涅爾電力', 'retailer', '2026-11-23', null, null, 'https://annealenergy.com.tw/綠電公開資訊', null, null, null),
+  ('晨星電力股份有限公司',       '晨星電力',   'retailer', '2026-11-23', null, 'https://www.risingstarenergy.com.tw/', null, null, null, null),
+  ('阿波羅電力股份有限公司',     '阿波羅電力', 'retailer', '2026-11-23', null, null, 'https://re100.com.tw/電業年報/', '7911', null, null),
+  ('寶富電力股份有限公司',       '寶富電力',   'retailer', '2026-11-23', null, null, null, null, null, null),
+  ('大自然能源電業股份有限公司', '大自然能源', 'retailer', '2026-11-23', null, 'https://naturalpower.com.tw/', null, null, null, null),
+  ('能元超商股份有限公司',       '能元超商',   'retailer', '2026-11-23', null, null, null, null, null, null),
+  ('開陽電力股份有限公司',       '開陽電力',   'retailer', '2026-11-23', null, null, null, null, null, null),
+  ('花蓮綠能股份有限公司',       '花蓮綠能',   'retailer', '2026-11-23', null, null, null, null, null, null),
+  ('中曜股份有限公司',           '中曜',       'retailer', '2026-11-23', null, null, null, null, null, null),
+  ('康展電力股份有限公司',       '康展電力',   'retailer', '2026-11-23', null, null, null, null, null, null),
+  ('博曜電力股份有限公司',       '博曜電力',   'retailer', '2026-11-23', null, null, null, null, null, null),
+  ('大同智能股份有限公司',       '大同智能',   'retailer', '2026-11-23', null, 'https://www.tatungforeverenergy.com/', null, null, null, null),
+  ('瓦特先生股份有限公司',       '瓦特先生',   'retailer', '2026-11-23', null, null, 'https://www.mrwatt.com.tw/power-report', null, null, null),
   -- 發電業前 20 名（規格 3-2）
-  ('鹿威風力發電股份有限公司',         '鹿威風力',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('中威風力發電股份有限公司',         '中威風力',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('台灣艾貴太陽能源股份有限公司',     '台灣艾貴',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('大彰化西北離岸風力發電股份有限公司', '大彰化西北', 'generator', '2026-11-22', '尚未列入能源署發電廠名單', null, null, null,
+  ('鹿威風力發電股份有限公司',         '鹿威風力',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('中威風力發電股份有限公司',         '中威風力',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('台灣艾貴太陽能源股份有限公司',     '台灣艾貴',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('大彰化西北離岸風力發電股份有限公司', '大彰化西北', 'generator', '2026-11-23', '尚未列入能源署發電廠名單', null, null, null,
      '2025 年商轉的離岸風場，能源署民營再生能源發電廠名單（115-01-26 更新）還沒列入，本站依實際營運列為發電業。',
      'An offshore wind farm that began commercial operation in 2025. It is not yet on the Energy Administration list of private renewable power plants (updated 2026-01-26); this site lists it as a generator based on its actual operation.'),
-  ('創維風力發電股份有限公司',         '創維風力',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('通威風力發電股份有限公司',         '通威風力',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('觀威風力發電股份有限公司',         '觀威風力',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('龍威風力發電股份有限公司',         '龍威風力',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('立為風力發電股份有限公司',         '立為風力',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('辰亞電力股份有限公司',             '辰亞電力',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('天衝能源股份有限公司',             '天衝能源',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('茂正能源股份有限公司',             '茂正能源',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('辰華電力股份有限公司',             '辰華電力',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('中鋼光能股份有限公司',             '中鋼光能',     'generator', '2026-11-22', null, null, 'https://www.cscphoto.com.tw/pub_year', null,
+  ('創維風力發電股份有限公司',         '創維風力',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('通威風力發電股份有限公司',         '通威風力',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('觀威風力發電股份有限公司',         '觀威風力',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('龍威風力發電股份有限公司',         '龍威風力',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('立為風力發電股份有限公司',         '立為風力',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('辰亞電力股份有限公司',             '辰亞電力',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('天衝能源股份有限公司',             '天衝能源',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('茂正能源股份有限公司',             '茂正能源',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('辰華電力股份有限公司',             '辰華電力',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('中鋼光能股份有限公司',             '中鋼光能',     'generator', '2026-11-23', null, null, 'https://www.cscphoto.com.tw/pub_year', null,
      '不在售電業名單，用自有案場直接轉供。月報：https://www.cscphoto.com.tw/pub_month',
      'Not on the retailer list; it sells power from its own plants directly to buyers.'),
-  ('厚固光電股份有限公司',             '厚固光電',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('星崙電業股份有限公司',             '星崙電業',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('天篷能源股份有限公司',             '天篷能源',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('曄恆能源股份有限公司',             '曄恆能源',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('安威風力發電股份有限公司',         '安威風力',     'generator', '2026-11-22', null, null, null, null, null, null),
-  ('新源風力發電股份有限公司',         '新源風力',     'generator', '2026-11-22', null, null, null, null, null, null),
+  ('厚固光電股份有限公司',             '厚固光電',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('星崙電業股份有限公司',             '星崙電業',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('天篷能源股份有限公司',             '天篷能源',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('曄恆能源股份有限公司',             '曄恆能源',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('安威風力發電股份有限公司',         '安威風力',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('新源風力發電股份有限公司',         '新源風力',     'generator', '2026-11-23', null, null, null, null, null, null),
+  -- 發電業第 21～28 名（2026-11 時），都在能源署民營再生能源發電廠名單
+  ('廣宇能源股份有限公司',             '廣宇能源',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('永宙太陽能電力股份有限公司',       '永宙太陽能',   'generator', '2026-11-23', null, null, null, null, null, null),
+  ('東鋼風力發電股份有限公司',         '東鋼風力',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('豐威風力發電股份有限公司',         '豐威風力',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('玉衡智慧能源股份有限公司',         '玉衡智慧能源', 'generator', '2026-11-23', null, null, null, null, null, null),
+  ('天權智慧能源股份有限公司',         '天權智慧能源', 'generator', '2026-11-23', null, null, null, null, null, null),
+  ('成勁電力股份有限公司',             '成勁電力',     'generator', '2026-11-23', null, null, null, null, null, null),
+  ('嘉南實業股份有限公司',             '嘉南實業',     'generator', '2026-11-23', null, null, null, null, null, null),
+  -- 售電業第 21、22 名（2026-11 時），都在能源署售電業名單
+  ('三地怪獸電力股份有限公司',         '三地怪獸電力', 'retailer',  '2026-11-23', null, null, null, null, null, null),
+  ('寶島陽光電力事業股份有限公司',     '寶島陽光',     'retailer',  '2026-11-23', null, 'https://www.formosasolar.com.tw/', 'https://www.formosasolar.com.tw/zh-tw/download.php?act=list&cid=14', null, null, null),
   -- 不列入排名
-  ('台灣電力股份有限公司', '台電',     'taipower', '2026-11-22', null, null, null, null, '排名排除台電。', 'Taipower is excluded from the rankings.'),
-  ('中華紙漿股份有限公司', '中華紙漿', 'excluded', '2026-11-22', '不在能源署售電業、發電廠名單', null, null, null,
+  ('台灣電力股份有限公司', '台電',     'taipower', '2026-11-23', null, null, null, null, '排名排除台電。', 'Taipower is excluded from the rankings.'),
+  ('中華紙漿股份有限公司', '中華紙漿', 'excluded', '2026-11-23', '不在能源署售電業、發電廠名單', null, null, null,
      '自用發電設備，憑證走自用發電設備成交紀錄，不列入排名。', 'A self-use generation facility; not ranked.')
 on conflict (name_zh) do update
   set short_name_zh = excluded.short_name_zh, role = excluded.role, registry_checked_on = excluded.registry_checked_on,
@@ -460,5 +476,5 @@ grant  execute on function api_company_rankings() to anon, authenticated, servic
 grant  execute on function api_company(int)       to anon, authenticated, service_role;
 
 
--- 檢查：應該是 42 家業者（售電業 20、發電業 20、台電 1、排除 1）
+-- 檢查：應該是 52 家業者（售電業 22、發電業 28、台電 1、排除 1）
 select role as 分類, count(*) as 家數 from companies group by role order by role;

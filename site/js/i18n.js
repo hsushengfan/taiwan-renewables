@@ -199,7 +199,7 @@ const TEXT = {
     coEnergy: (e) => e,
     // 小檔案頁
     cpBack: "業者排名",
-    cpRankLine: (role, r, n) => `${role}　累計排名第 ${r} 名（共 ${n} 家）`,
+    cpRankLine: (role, r) => `${role}　累計排名第 ${r} 名`,
     cpInfoTitle: "基本資料",
     cpInfo: { role: "分類", registry: "能源署名單", website: "官網", disclosure: "公開資訊頁（電業法第 66 條）", stock: "上市櫃代號", energy: "能源別", cases: "賣出過的案場", cap: "裝置容量", note: "備註" },
     cpRegistryChecked: (d) => `名單核對日 ${d}`,
@@ -421,7 +421,7 @@ const TEXT = {
     ],
     coEnergy: (e) => ({ "太陽能": "Solar", "風力能": "Wind", "風力": "Wind", "水力能": "Hydro", "生質能": "Biomass", "地熱能": "Geothermal", "海洋能": "Ocean" }[e] || e),
     cpBack: "Company rankings",
-    cpRankLine: (role, r, n) => `${role} · overall rank ${r} of ${n}`,
+    cpRankLine: (role, r) => `${role} · overall rank ${r}`,
     cpInfoTitle: "Profile",
     cpInfo: { role: "Type", registry: "Energy Administration list", website: "Website", disclosure: "Disclosures (Electricity Act Art. 66)", stock: "Stock code", energy: "Energy", cases: "Plants sold from", cap: "Capacity", note: "Note" },
     cpRegistryChecked: (d) => `List checked on ${d}`,

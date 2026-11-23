@@ -309,7 +309,7 @@ GitHub Actions 的備援已停用自動排程（從來沒有成功收到過資�
 設定步驟（只要做一次）：
 
 1. **建資料表**：執行 `supabase/migrations/015_companies.sql`（SQL Editor 開新分頁，整份貼上，下拉選單選 Database，按 Run）。
-   最後應該看到售電業 20、發電業 20、台電 1、排除 1。
+   最後應該看到售電業 22、發電業 28、台電 1、排除 1。
 2. **部署 Edge Function**：左邊選單 **Edge Functions** → **Deploy a new function** → **Via Editor**，
    名稱填 `trec-sync`，貼上 `supabase/functions/trec-sync/index.ts` 的全部內容，按 **Deploy**。
 3. **第一次匯入（分兩批）**：在 `trec-sync` 的頁面按 **Test**，Method 選 **POST**，
