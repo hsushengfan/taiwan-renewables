@@ -138,7 +138,7 @@ export function render(root, ctx, data) {
   const rc = t("cpReportsCols");
   const reports = d.reports;
   const reportsShown = showAllReports ? reports : reports.slice(0, REPORTS_SHOWN);
-  const reportsCsv = () => [rc, ...reports.map((r) => [t("cpReportType")[r.report_type], r.status === "found" ? r.year : "", r.status === "found" ? (r.month ?? "") : "", t("cpReportStatus")[r.status], r.url || "", r.note || ""])];
+  const reportsCsv = () => [rc, ...reports.map((r) => [t("cpReportType")[r.report_type], r.year ?? "", r.month ?? "", t("cpReportStatus")[r.status], r.url || "", r.note || ""])];
   const reportsCard = el("section", { className: "card" }, [
     el("div", { className: "cardhead" }, [el("h2", { textContent: t("cpReportsTitle") })]),
     reports.length
@@ -146,10 +146,11 @@ export function render(root, ctx, data) {
         el("thead", {}, [el("tr", {}, rc.map((h, i) => el("th", { textContent: h, className: i === 0 || i >= 3 ? "c" : "" })))]),
         el("tbody", {}, reportsShown.map((r) => el("tr", {}, [
           el("td", { className: "c", textContent: t("cpReportType")[r.report_type] }),
-          // 「只有頁面」「找不到」那一列代表整家公司，年份只是佔位，不顯示
-          el("td", { textContent: r.status === "found" ? r.year : "—" }), el("td", { textContent: r.status === "found" ? (r.month ?? "—") : "—" }),
+          // 年份空白的列代表整家公司（例如整家都找不到），不是某一份報告
+          el("td", { textContent: r.year ?? "—" }), el("td", { textContent: r.month ?? "—" }),
           el("td", { className: "c", textContent: t("cpReportStatus")[r.status] }),
-          el("td", { className: "c" }, [r.url ? el("a", { href: r.url, target: "_blank", rel: "noopener", textContent: t("cpReportOpen") }) : document.createTextNode("—")]),
+          // 「連結失效」的網址只留在資料庫做紀錄，網站上不放連結
+          el("td", { className: "c" }, [r.url && r.status !== "broken" ? el("a", { href: r.url, target: "_blank", rel: "noopener", textContent: t("cpReportOpen") }) : document.createTextNode("—")]),
           el("td", { className: "c", textContent: r.note || "" }),
         ]))),
       ])])
