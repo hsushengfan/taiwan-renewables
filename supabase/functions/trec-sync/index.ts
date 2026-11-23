@@ -155,8 +155,14 @@ async function save(runId: number, asOf: string, years: YearData[]) {
 // ---------------------------------------------------------------------
 // 4. 找可能擠進前 20 名的新業者
 //    門檻＝售電業、發電業兩份排名第 20 名中比較小的那個（新業者還不知道是哪一類）
+//    資料庫要有 2020 年到今年的每一年才檢查：第一次分批匯入、只匯入一部分年份時，
+//    累計量還不完整，門檻會算得太低，把很多小業者誤判成新進前 20 名。
 // ---------------------------------------------------------------------
-async function findNewCompanies(): Promise<{ name: string; sold_mwh: number }[]> {
+async function findNewCompanies(latestYear: number): Promise<{ name: string; sold_mwh: number }[] | null> {
+  const { data: have, error: e0 } = await supabase.from("trec_year_totals").select("year");
+  if (e0) throw new Error(`讀年份失敗：${e0.message}`);
+  const got = new Set((have ?? []).map((r) => Number(r.year)));
+  for (let y = FIRST_YEAR; y <= latestYear; y++) if (!got.has(y)) return null;   // 年份還不齊，先不檢查
   const { data: twentieth, error: e1 } = await supabase.from("company_rankings").select("role, cum_mwh").eq("rank", 20);
   if (e1) throw new Error(`讀排名失敗：${e1.message}`);
   const threshold = Math.min(...(twentieth ?? []).map((r) => Number(r.cum_mwh)), Infinity);
@@ -229,9 +235,9 @@ async function run(requestedYears: number[] | null) {
     }
 
     await save(runId, asOf, results);
-    const found = await findNewCompanies();
+    const found = await findNewCompanies(s.latestYear);
     let mail = "";
-    if (found.length) {
+    if (found?.length) {
       mail = await sendEmail(`【台灣電力網站】T-REC 有 ${found.length} 家新業者可能擠進前 20 名`,
         `<p>這些出售單位還不在業者名單裡，累計直轉供移轉量已經達到前 20 名的門檻。請確認它們是售電業、發電業，還是不列入排名：</p>` +
         `<table border="1" cellpadding="4" style="border-collapse:collapse"><tr><th>名稱</th><th>累計移轉（MWh）</th></tr>` +
@@ -240,7 +246,7 @@ async function run(requestedYears: number[] | null) {
         `<p><a href="${SITE_URL}#companies">${SITE_URL}#companies</a></p>`);
     }
     const counts = results.map((r) => `${r.year}：憑證 ${r.cert.length}、直轉供 ${r.direct.length}、自用 ${r.self.length} 筆`).join("；");
-    await finish("ok", `已更新 ${counts}` + (found.length ? `。新業者 ${found.length} 家，${mail}` : ""));
+    await finish("ok", `已更新 ${counts}` + (found === null ? "。年份還不齊，這次不檢查新業者" : found.length ? `。新業者 ${found.length} 家，${mail}` : ""));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     const mail = await sendEmail("【台灣電力網站】T-REC 每月同步失敗",
@@ -250,6 +256,8 @@ async function run(requestedYears: number[] | null) {
 }
 
 Deno.serve(async (req) => {
+  // 只接受 POST（排程和後台的 Test 按鈕都是 POST），用瀏覽器打開網址之類的請求不會觸發抓取
+  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
   let years: number[] | null = null;
   try {
     const body = await req.json();
