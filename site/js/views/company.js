@@ -135,7 +135,7 @@ export function render(root, ctx, data) {
   // ---- 4. 年報與月報 ----
   const rc = t("cpReportsCols");
   const reports = d.reports;
-  const reportsCsv = () => [rc, ...reports.map((r) => [t("cpReportType")[r.report_type], r.year, r.month ?? "", t("cpReportStatus")[r.status], r.url || "", r.note || ""])];
+  const reportsCsv = () => [rc, ...reports.map((r) => [t("cpReportType")[r.report_type], r.status === "found" ? r.year : "", r.status === "found" ? (r.month ?? "") : "", t("cpReportStatus")[r.status], r.url || "", r.note || ""])];
   const reportsCard = el("section", { className: "card" }, [
     el("div", { className: "cardhead" }, [el("h2", { textContent: t("cpReportsTitle") })]),
     reports.length
@@ -143,7 +143,8 @@ export function render(root, ctx, data) {
         el("thead", {}, [el("tr", {}, rc.map((h, i) => el("th", { textContent: h, className: i === 0 || i >= 3 ? "c" : "" })))]),
         el("tbody", {}, reports.map((r) => el("tr", {}, [
           el("td", { className: "c", textContent: t("cpReportType")[r.report_type] }),
-          el("td", { textContent: r.year }), el("td", { textContent: r.month ?? "—" }),
+          // 「只有頁面」「找不到」那一列代表整家公司，年份只是佔位，不顯示
+          el("td", { textContent: r.status === "found" ? r.year : "—" }), el("td", { textContent: r.status === "found" ? (r.month ?? "—") : "—" }),
           el("td", { className: "c", textContent: t("cpReportStatus")[r.status] }),
           el("td", { className: "c" }, [r.url ? el("a", { href: r.url, target: "_blank", rel: "noopener", textContent: t("cpReportOpen") }) : document.createTextNode("—")]),
           el("td", { className: "c", textContent: r.note || "" }),
