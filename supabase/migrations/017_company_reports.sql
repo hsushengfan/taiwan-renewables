@@ -2,7 +2,7 @@
 -- 017：匯入業者的年報、月報位置（業者排名第 2 階段，規格見 docs/specs/companies.md 第 5 節）
 --
 -- 為什麼：業者小檔案頁要列出每家依電業法第 66 條公開的簡明年報、月報，方便連回原檔。
--- 做了什麼：把 data/company_reports.csv 的 639 列匯入 company_reports。
+-- 做了什麼：把 data/company_reports.csv 的 673 列匯入 company_reports。
 --   - 年報從 2020 年起；月報是最近 24 個月（2024-11～2026-10）。只存連結，不存 PDF。
 --   - status：found 找到個別報告｜page_only 只找到列表頁（month 是空的，代表整個頁面）｜not_found 找不到（note 寫找過哪裡）
 --   - 2026-11-23 第二次整理：加入使用者提供的 33 個公開資訊頁網址（wpd 9 個風場、茂正、能元等因此找到）。
@@ -646,11 +646,45 @@ insert into tmp_reports values
   ('台汽電綠能股份有限公司', 'annual', 2025, null, 'https://www.tccgreenenergy.com.tw/Laws?cid=660', 'page_only', '2026-11-23', '年報列表頁，程式沒有讀到個別年報'),
   ('台灣艾貴太陽能源股份有限公司', 'monthly', 2026, null, 'https://venaenergy.tw/', 'page_only', '2026-11-23', 'Vena Energy（韋能能源）官網只列最近幾個月的「嘉義義竹電廠」月報，更早的找不到'),
   ('阿波羅電力股份有限公司', 'annual', 2025, null, 'https://re100.com.tw/電業年報/', 'page_only', '2026-11-23', '年報頁有機器人驗證，程式打不開'),
-  ('中曜股份有限公司', 'monthly', 2026, null, 'https://powergeneration.chailease.com.tw/announcement', 'page_only', '2026-11-23', '頁面用程式打開是空白（使用者提供的網址，2026-11-23）'),
-  ('博曜電力股份有限公司', 'monthly', 2026, null, 'https://www.taya.com.tw/bo-yao-electric', 'page_only', '2026-11-23', '網站回應「upstream request failed」，程式打不開（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'annual', 2024, null, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2025, 1, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2025, 2, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2025, 3, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2025, 4, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2025, 5, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2025, 6, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2025, 7, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2025, 8, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2025, 9, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2025, 10, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2025, 11, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2025, 12, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'annual', 2025, null, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2026, 1, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2026, 2, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2026, 3, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2026, 4, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2026, 5, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2026, 6, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2026, 7, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2026, 8, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2026, 9, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('中曜股份有限公司', 'monthly', 2026, 10, 'https://powergeneration.chailease.com.tw/announcement', 'found', '2026-11-23', '到公告頁的「公司名稱」選「中曜」、類別選年報或月報，再點檔名下載（網站沒有每份檔案的固定網址）（使用者提供的網址，2026-11-23）'),
+  ('博曜電力股份有限公司', 'annual', 2021, null, 'https://www.taya.com.tw/storage/architecture/page~98/page~138/page~145/BO-YAO/A2021.pdf', 'found', '2026-11-23', null),
+  ('博曜電力股份有限公司', 'annual', 2022, null, 'https://www.taya.com.tw/storage/architecture/page~98/page~138/page~145/BO-YAO/A2022.pdf', 'found', '2026-11-23', null),
+  ('博曜電力股份有限公司', 'annual', 2023, null, 'https://www.taya.com.tw/storage/architecture/page~98/page~138/page~145/BO-YAO/A2023.pdf', 'found', '2026-11-23', null),
+  ('博曜電力股份有限公司', 'annual', 2024, null, 'https://www.taya.com.tw/storage/architecture/page~98/page~138/page~145/BO-YAO/A2024.pdf', 'found', '2026-11-23', null),
+  ('博曜電力股份有限公司', 'monthly', 2024, 11, 'https://www.taya.com.tw/storage/architecture/page~98/page~138/page~145/BO-YAO/B202411.pdf', 'found', '2026-11-23', null),
+  ('博曜電力股份有限公司', 'monthly', 2024, 12, 'https://www.taya.com.tw/storage/architecture/page~98/page~138/page~145/BO-YAO/B202412.pdf', 'found', '2026-11-23', null),
+  ('博曜電力股份有限公司', 'monthly', 2025, 1, 'https://www.taya.com.tw/storage/architecture/page~98/page~138/page~145/BO-YAO/B202501.pdf', 'found', '2026-11-23', null),
+  ('博曜電力股份有限公司', 'monthly', 2025, 2, 'https://www.taya.com.tw/storage/architecture/page~98/page~138/page~145/BO-YAO/B202502.pdf', 'found', '2026-11-23', null),
+  ('博曜電力股份有限公司', 'monthly', 2025, 3, 'https://www.taya.com.tw/storage/architecture/page~98/page~138/page~145/BO-YAO/B202503.pdf', 'found', '2026-11-23', null),
+  ('博曜電力股份有限公司', 'monthly', 2025, 4, 'https://www.taya.com.tw/storage/architecture/page~98/page~138/page~145/BO-YAO/B202504.pdf', 'found', '2026-11-23', null),
+  ('博曜電力股份有限公司', 'monthly', 2025, 5, 'https://www.taya.com.tw/storage/architecture/page~98/page~138/page~145/BO-YAO/B202505.pdf', 'found', '2026-11-23', null),
+  ('博曜電力股份有限公司', 'monthly', 2025, 6, 'https://www.taya.com.tw/storage/architecture/page~98/page~138/page~145/BO-YAO/B202506.pdf', 'found', '2026-11-23', '網站只列到 2024 年年報、2025 年 6 月月報（使用者提供的網址，2026-11-23）'),
   ('寶富電力股份有限公司', 'monthly', 2026, null, 'https://www.inaenergy.com.tw/investor.php', 'page_only', '2026-11-23', '寶晶能源的「簡明年月報」，要點選月份才會出現檔案（使用者提供的網址，2026-11-23）'),
   ('康展電力股份有限公司', 'monthly', 2026, null, 'https://www.actelpower.com/news.php?news_id=2', 'page_only', '2026-11-23', '每份月報是一則「最新消息」公告（例如「115年度10月份售電業月報」）（使用者提供的網址，2026-11-23）'),
-  ('晨星電力股份有限公司', 'monthly', 2026, null, 'https://www.risingstarenergy.com.tw/report', 'page_only', '2026-11-23', '網站回應「upstream request failed」，程式打不開（使用者提供的網址，2026-11-23）'),
+  ('晨星電力股份有限公司', 'monthly', 2026, null, 'https://www.risingstarenergy.com.tw/report', 'page_only', '2026-11-23', '網站的 SSL 憑證設定不完整（少了中繼憑證），一般瀏覽器通常能自動補上，但本站的程式環境無法安全連線，所以讀不到檔案清單；請直接點連結到網站看（使用者提供的網址，2026-11-23）'),
   ('大自然能源電業股份有限公司', 'monthly', 2026, null, 'https://www.naturalpower.com.tw/#/report', 'page_only', '2026-11-23', '選年份、點月份才會開檔案（JavaScript），沒有一般網址（使用者提供的網址，2026-11-23）'),
   ('富威電力股份有限公司', 'monthly', 2026, null, 'https://www.fwp.com.tw/Investor', 'page_only', '2026-11-23', '程式在投資人專區找不到年報、月報的連結，可能要點選（使用者提供的網址，2026-11-23）'),
   ('天衝能源股份有限公司', 'monthly', 2026, null, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3052', 'page_only', '2026-11-23', '中興電工網站的電業簡明年報/月報頁，有 2026 年 1～8 月的月報；每個檔案的網址帶一次性的代碼、可能會過期，所以只存列表頁（使用者提供的網址，2026-11-23）'),
@@ -669,7 +703,7 @@ select c.id, t.report_type, t.year, t.month, nullif(t.url, ''), t.status, t.chec
 
 drop table tmp_reports;
 
--- 檢查：應該是 639 列、40 家
+-- 檢查：應該是 673 列、40 家
 select count(*) as 報告列數, count(distinct company_id) as 公司數,
        count(*) filter (where status = 'found') as 找到,
        count(*) filter (where status = 'page_only') as 只有頁面,
