@@ -46,7 +46,7 @@ export function render(root, ctx, data) {
   const head = el("div", { className: "pagehead" }, [
     crumbs([[t("navOverview"), "#"], [t("cpBack"), "#companies"], [coName(c)]]),
     el("h2", { className: "pagetitle", textContent: c.name_zh }),
-    el("p", { className: "sub", textContent: t("cpRankLine", roleName, c.rank, c.role_size) + (d.as_of ? `　${t("coAsOf", d.as_of)}` : "") }),
+    el("p", { className: "sub", textContent: t("cpRankLine", roleName, c.rank, c.role_size) + (d.as_of ? `${getLang() === "en" ? " · " : "　"}${t("coAsOf", d.as_of)}` : "") }),
   ]);
 
   // ---- 1. 基本資料 ----

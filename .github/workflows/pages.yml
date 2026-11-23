@@ -24,11 +24,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  # 分成兩個工作：先「打包」，再「發布」。
+  # 2026-11 起，打包和發布放在同一個工作裡時，GitHub 的發布工具常常找不到剛打包好的檔案
+  # （錯誤訊息「No artifacts named "github-pages"」，見 actions/deploy-pages#451），重新執行也救不回來。
+  # 拆成兩個工作，發布要等打包整個做完才開始，就不會碰到這個問題。
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: 下載 repo 內容
         uses: actions/checkout@v4
@@ -48,10 +49,17 @@ jobs:
           grep -c "?v=$v" site/index.html site/js/app.js
 
       - name: 打包 site 資料夾
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
+  deploy:
+    needs: build          # 等打包做完才開始
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: 發布
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
