@@ -519,7 +519,7 @@ T-REC 的三份資料由 Edge Function `trec-sync` 每月 15 日自動抓；業�
 #### `company_reports` 與 `company_financials`
 
 - `company_reports`：一份年報或月報的連結（`report_type` 是 `annual`／`monthly`，
-  `status` 是 `found`／`page_only`／`not_found`）。資料來自 `data/company_reports.csv`，用 `017_company_reports.sql` 匯入（2026-11-23：40 家、673 列）。
+  `status` 是 `found`／`page_only`／`not_found`）。資料來自 `data/company_reports.csv`，用 `017_company_reports.sql` 匯入（2026-11-23：40 家、723 列）。
   `page_only`（只找到列表頁）和 `not_found`（找不到）那一列代表整家公司，年份只是佔位、月份是空的，`note` 寫找過哪裡。
   找不到或只找到一部分的公司列在 `docs/company-reports-todo.md`。
 - 第 3 階段用的表先建好。`company_financials`：一家一年的購電量、售電量（度）和收入、成本（元），
