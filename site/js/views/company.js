@@ -22,7 +22,9 @@ export const showFilters = false;
 const TREC_URL = "https://www.trec.org.tw/certification_trade_situation/direct_supply";
 const TREC_CERT_URL = "https://www.trec.org.tw/certification";
 const CASES_SHOWN = 30;          // 案場很多的業者（例如上千個），先顯示前 30 個
+const REPORTS_SHOWN = 30;        // 月報從 2020 年開始收，有的業者有 80 幾份，先顯示前 30 列（年報在前、月報由新到舊）
 let showAllCases = false;
+let showAllReports = false;
 let lastId = null;
 
 export async function load(ctx, id) {
@@ -37,7 +39,7 @@ const sep = () => (getLang() === "en" ? ", " : "、");
 export function render(root, ctx, data) {
   const d = data.company;
   const c = d.company;
-  if (lastId !== c.id) { showAllCases = false; lastId = c.id; }
+  if (lastId !== c.id) { showAllCases = false; showAllReports = false; lastId = c.id; }
   const rerender = () => render(root, ctx, data);
   const roleName = t("coRoleName")[c.role];
   const updated = d.as_of || "";
@@ -135,13 +137,14 @@ export function render(root, ctx, data) {
   // ---- 4. 年報與月報 ----
   const rc = t("cpReportsCols");
   const reports = d.reports;
+  const reportsShown = showAllReports ? reports : reports.slice(0, REPORTS_SHOWN);
   const reportsCsv = () => [rc, ...reports.map((r) => [t("cpReportType")[r.report_type], r.status === "found" ? r.year : "", r.status === "found" ? (r.month ?? "") : "", t("cpReportStatus")[r.status], r.url || "", r.note || ""])];
   const reportsCard = el("section", { className: "card" }, [
     el("div", { className: "cardhead" }, [el("h2", { textContent: t("cpReportsTitle") })]),
     reports.length
       ? el("div", { className: "scroll" }, [el("table", {}, [
         el("thead", {}, [el("tr", {}, rc.map((h, i) => el("th", { textContent: h, className: i === 0 || i >= 3 ? "c" : "" })))]),
-        el("tbody", {}, reports.map((r) => el("tr", {}, [
+        el("tbody", {}, reportsShown.map((r) => el("tr", {}, [
           el("td", { className: "c", textContent: t("cpReportType")[r.report_type] }),
           // 「只有頁面」「找不到」那一列代表整家公司，年份只是佔位，不顯示
           el("td", { textContent: r.status === "found" ? r.year : "—" }), el("td", { textContent: r.status === "found" ? (r.month ?? "—") : "—" }),
@@ -151,6 +154,7 @@ export function render(root, ctx, data) {
         ]))),
       ])])
       : el("p", {}, [el("b", { textContent: t("cpPending") + t("colon") }), document.createTextNode(t("cpPendingReports"))]),
+    reports.length > reportsShown.length ? el("button", { type: "button", className: "chip more", textContent: t("cpReportsMore", fmt(reports.length, 0)), onclick: () => { showAllReports = true; rerender(); } }) : "",
     reports.length ? cardFoot([[info.disclosure, c.disclosure_url]], "", downloadButton(`taiwan-renewable-${slug}-reports.csv`, reportsCsv)) : "",
   ]);
 
