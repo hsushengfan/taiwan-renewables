@@ -172,3 +172,41 @@ td.sortcol{font-weight:600}
 .chip.more{margin-top:10px}
 .ranktable th,.ranktable td{padding:7px 6px;font-size:13px}
 .ranktable th{font-size:12px}
+
+/* ---- 業者頁：財務分析（finance.js）---- */
+.fin .fin-src{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 12px;font-size:13px}
+.fin .chip.src{text-decoration:none;cursor:pointer}
+.fin .chip.src:hover{border-color:var(--g4)}
+.fin .chip.src.off{color:var(--muted);cursor:default}
+.fin .dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--muted)}
+.fin .small,.fin-table .small{font-size:11px}
+.fin-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.fin-seg{flex-wrap:wrap}
+.fin-scope{color:var(--ink2);font-size:13px;margin:4px 0 8px}
+.fin-tiles .stat .v{font-size:24px}
+.fin-tiles .stat .n{margin-top:4px;line-height:1.4}
+.fin-tiles .stat.pos .v{color:var(--g7)}
+.fin-tiles .stat.neg .v{color:var(--g0)}
+.fin-tiles .stat.warn{border-color:var(--g6)}
+.fin-charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:16px}
+.fin-charts h3{font-size:14px;font-weight:600;margin:0 0 6px}
+.fin-charts .empty{font-size:13px;padding:24px 0}
+.banner{border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.5;margin:8px 0;max-width:none}
+.banner.warn{background:color-mix(in srgb,var(--g6) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--g6) 45%,var(--surface))}
+.banner.info{background:color-mix(in srgb,var(--g4) 10%,var(--surface));border:1px solid color-mix(in srgb,var(--g4) 35%,var(--surface))}
+.fin-table{margin-top:16px}
+.fin-table tbody tr{cursor:pointer}
+.fin-table tbody tr:hover{background:color-mix(in srgb,var(--g4) 6%,var(--surface))}
+.fin-table tr.sel{background:color-mix(in srgb,var(--g4) 12%,var(--surface))}
+.fin-table tr.avg th,.fin-table tr.avg td{border-top:2px solid var(--grid);font-weight:600}
+.fin-table td.src{text-align:left;white-space:normal;min-width:150px}
+.fin-table td.src a{color:var(--g4)}
+.fin-table td.warnc{color:var(--g6)}
+.pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--border);margin:1px 2px;white-space:nowrap}
+.pill.flag{border-color:var(--g6);color:var(--g6)}
+.st-complete{--st:var(--g7)} .st-partial{--st:var(--g6)} .st-masked{--st:var(--g0)} .st-no_fin{--st:var(--muted)} .st-missing{--st:var(--g0)}
+.pill.st-complete,.pill.st-partial,.pill.st-masked,.pill.st-no_fin,.pill.st-missing{color:var(--st);border-color:var(--st)}
+.fin .dot.st-complete,.fin .dot.st-partial,.fin .dot.st-masked,.fin .dot.st-no_fin,.fin .dot.st-missing{background:var(--st)}
+.fin details{margin-top:12px;font-size:13px}
+.fin details ul{margin:6px 0 0;padding-left:20px;color:var(--ink2);line-height:1.6}
+.fin-why{margin:6px 0;padding-left:20px;color:var(--ink2);font-size:13px;line-height:1.6}

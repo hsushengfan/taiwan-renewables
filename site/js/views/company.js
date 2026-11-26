@@ -4,7 +4,7 @@
 //   2. 逐年：賣出多少（直轉供移轉量）、拿到多少憑證（發放量）、還留著多少（尚未移轉）——圖＋表
 //   3. 賣出過的案場：業主、能源別、裝置容量、累計移轉量
 //   4. 年報與月報（第 2 階段的資料）
-//   5. 每度電售電單價與購電成本推估（第 3 階段；還沒有資料時顯示「尚未整理」）
+//   5. 財務分析（第 3 階段）：售電單價、購電成本、價差等推估，附年報連結和頁碼（finance.js）
 //
 // 資料用 api_company(id) 讀（見 supabase/migrations/015_companies.sql）。
 
@@ -15,6 +15,7 @@ import { lineChart } from "../charts.js";
 import { downloadButton, cardFoot } from "../download.js";
 import { crumbs } from "./category.js";
 import { coName } from "./companies.js";
+import { financeCard } from "./finance.js";
 
 export const autoRefresh = false;
 export const showFilters = false;
@@ -159,12 +160,9 @@ export function render(root, ctx, data) {
     reports.length ? cardFoot([[info.disclosure, c.disclosure_url]], "", downloadButton(`taiwan-renewable-${slug}-reports.csv`, reportsCsv)) : "",
   ]);
 
-  // ---- 5. 財務推估（第 3 階段）----
-  const finCard = el("section", { className: "card" }, [
-    el("div", { className: "cardhead" }, [el("h2", { textContent: t("cpFinTitle") })]),
-    el("p", {}, [el("b", { textContent: t("cpPending") + t("colon") }), document.createTextNode(t("cpPendingFin"))]),
-  ]);
+  // ---- 5. 財務分析（第 3 階段，見 finance.js）----
+  const finCard = financeCard(c, d, rerender);
 
-  root.replaceChildren(head, infoCard, yearCard, casesCard, reportsCard, finCard);
+  root.replaceChildren(head, infoCard, finCard, yearCard, casesCard, reportsCard);
   requestAnimationFrame(() => lineChart(yearBox, { xs: years, series, label: t("cpYearLabel") }));
 }

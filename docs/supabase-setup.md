@@ -323,6 +323,7 @@ GitHub Actions 的備援已停用自動排程（從來沒有成功收到過資�
    再執行 `supabase/migrations/017_company_reports.sql`，最後應該看到 1573 列、40 家（找到 1562、找不到 8、連結失效 3）。
    全新安裝時也是 019 在 017 前面（017 的資料用到 019 的狀態）。
 6. **每家的公開資訊頁網址**：執行 `supabase/migrations/018_company_disclosure_urls.sql`，最後應該看到 39 家有網址、還沒有網址的是花蓮綠能。
+7. **財務分析**（第 3 階段）：執行 `supabase/migrations/020_company_financials.sql`，最後應該看到售電業 55 份年報（算得出單價 26、遮蔽 9、讀不到 2）、發電業 39 份（算得出單價 28、讀不到 1）。
 
 **收到信怎麼辦：**
 
