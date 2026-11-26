@@ -320,9 +320,10 @@ GitHub Actions 的備援已停用自動排程（從來沒有成功收到過資�
    - 這個函式只接受 POST（排程和 Test 按鈕都是）。直接用瀏覽器打開函式網址不會觸發抓取。
 4. **設定每月排程**：執行 `supabase/migrations/016_trec_schedule.sql`。
 5. **年報、月報的連結**（第 2 階段）：先執行 `supabase/migrations/019_report_status_broken.sql`（新增「連結失效」狀態、整家公司的列年份可以留空），
-   再執行 `supabase/migrations/017_company_reports.sql`，最後應該看到 1573 列、40 家（找到 1563、找不到 8、連結失效 2）。
+   再執行 `supabase/migrations/017_company_reports.sql`，最後應該看到 1573 列、40 家（找到 1562、找不到 8、連結失效 3）。
    全新安裝時也是 019 在 017 前面（017 的資料用到 019 的狀態）。
 6. **每家的公開資訊頁網址**：執行 `supabase/migrations/018_company_disclosure_urls.sql`，最後應該看到 39 家有網址、還沒有網址的是花蓮綠能。
+7. **財務分析**（第 3 階段）：執行 `supabase/migrations/020_company_financials.sql`，最後應該看到售電業 55 份年報（算得出單價 26、遮蔽 9、讀不到 2）、發電業 39 份（算得出單價 28、讀不到 1）。
 
 **收到信怎麼辦：**
 

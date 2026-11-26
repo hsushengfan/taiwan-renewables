@@ -15,7 +15,7 @@
 
 ## 1. 一眼看懂
 
-資料庫裡有 24 張資料表、3 個 view，另外在 Storage（雲端硬碟）存原始檔。
+資料庫裡有 24 張資料表、4 個 view，另外在 Storage（雲端硬碟）存原始檔。
 其中 9 張和「即時發電資料」有關（下表上半部），6 張是人工整理的「電價與轉供費率」，
 9 張是「業者排名」（T-REC 憑證資料和業者名單，下表最下面，見第 4 節最後）。
 
@@ -49,6 +49,7 @@
 | [`company_financials`](#company_reports與-company_financials) | 資料表 | 一家業者一年的財務數字 | **人工整理的原始資料**（第 3 階段） |
 | [`company_rankings`](#view-company_rankings與-trec_unknown_sellers) | view | 售電業、發電業各自依累計直轉供移轉量排名 | **算出來的** |
 | [`trec_unknown_sellers`](#view-company_rankings與-trec_unknown_sellers) | view | T-REC 上有、但業者名單沒有的公司 | **算出來的** |
+| [`company_unit_metrics`](#company_reports與-company_financials) | view | `company_financials` 加上每度電的單價（推估） | **算出來的** |
 
 **view 是什麼？** view 不存資料，它是一個「存起來的查詢」。
 每次讀它，資料庫才去 `readings` 拿資料現算。所以 view 不佔空間，內容也永遠是最新的。
@@ -526,8 +527,20 @@ T-REC 的三份資料由 Edge Function `trec-sync` 每月 15 日自動抓；業�
   - 有年份的 `not_found` 是**某一份報告**找不到，例如官網放錯檔案、連結要登入；`url` 是空的，`note` 寫原因。
   - `broken`（019 新增）：之前找到、後來抽查打不開或要登入的連結。`url` 留著做紀錄，網站上顯示「連結失效」、不放連結。
   找不到或只找到一部分的公司列在 `docs/company-reports-todo.md`。
-- 第 3 階段用的表先建好。`company_financials`：一家一年的購電量、售電量（度）和收入、成本（元），
-  附報告和頁碼。發電業要用的欄位等第 3 階段再加。
+- `company_financials`：一份年報一列（`period` 是 `annual`），從年報讀出的數字。資料來自 `data/company_financials.csv`，
+  用 `020_company_financials.sql` 匯入（2026-11-26：94 列，售電業 55、發電業 39）。抽查摘要見 `docs/company-financials-review.md`。
+  - 售電業：`purchased_kwh`、`sold_kwh`（度）；收支：`operating_revenue`、`electricity_revenue`、`operating_cost`、`operating_expense`（元）。
+  - 發電業（020 新增）：`capacity_kw`（瓩）、`gross_generation_kwh`、`net_generation_kwh`、`sold_to_taipower_kwh`、
+    `sold_to_retailers_kwh`、`sold_to_users_kwh`（度）、`capacity_factor_pct`（%）；有收支表的也存收支。
+  - `pages`：每個數字在第幾頁（例如「購電量 p5；收支表 p10」）；`page`：主要的頁碼。
+  - `status`（020 新增）：`complete` 算得出單價／`partial` 只有部分數字／`masked` 收支遮蔽／`no_fin` 年報沒附收支表／`missing` 讀不到年報。
+  - `flags`（020 新增）：`fee` 可能只認列服務費／`cost_other` 營業成本不只購電／`mismatch` 數字對不起來。網站會提醒，整體平均不採用。
+  - `masked`：收支有遮蔽（`*`、`x` 或畫面上被黑色方塊蓋住），遮住的數字存空值。`source`：`pdf`／`html`（年報是網頁）／`missing`。
+  - `report_id` 不使用：重跑 017 時報告編號會變，所以 `api_company` 用「公司＋年度」對到 `company_reports` 的年報連結。
+- view `company_unit_metrics`（020 新增）：`company_financials` 每一列加上算好的單價（推估）：
+  售電業 `sale_price`（電業收入 ÷ 售電量）、`purchase_cost`（營業成本 ÷ 購電量）、`spread`、`expense_per_kwh`；
+  發電業 `sold_total`（售予台電＋售予售電業＋直轉供，都沒有就用淨發電量）、`revenue_per_kwh`、`cost_per_kwh`；
+  兩者都有 `operating_income`（營業收入和電業收入取較大的，減營業成本和營業費用）。算法見 `docs/methodology.md`「業者財務分析」。
 
 #### view `company_rankings` 與 `trec_unknown_sellers`
 
@@ -588,7 +601,7 @@ T-REC 的三份資料由 Edge Function `trec-sync` 每月 15 日自動抓；業�
 | `api_price()` | 電價走勢頁的全部資料：`avg_unit_prices`、`unit_costs`、`adjustments`、`required` | 沒有參數（資料量很小，一次全部回傳） |
 | `api_wheeling()` | 轉供費率頁的資料：`rates`（各年各種費率）、`docs`（每年的台電公告原檔） | 沒有參數 |
 | `api_company_rankings()` | 業者排名頁：資料月份 `as_of`、年份、售電業和發電業各前 20 名、每年的 T-REC 總量 | 沒有參數 |
-| `api_company(id)` | 業者小檔案頁：基本資料和排名、逐年數字、賣出過的案場、報告、財務推估。找不到（或不是售電業、發電業）回傳空值 | 一次一家 |
+| `api_company(id)` | 業者小檔案頁：基本資料和排名、逐年數字、賣出過的案場、報告、財務分析（`financials` 讀 `company_unit_metrics`，附那一年年報的 `report_url`；020 修改）。找不到（或不是售電業、發電業）回傳空值 | 一次一家 |
 
 `hour` 和 `day` 粒度回傳的是那段時間內每 10 分鐘數值的平均。
 
