@@ -537,7 +537,11 @@ T-REC 的三份資料由 Edge Function `trec-sync` 每月 15 日自動抓；業�
   - `flags`（020 新增）：`fee` 可能只認列服務費／`cost_other` 營業成本不只購電／`mismatch` 數字對不起來。網站會提醒，整體平均不採用。
   - `masked`：收支有遮蔽（`*`、`x` 或畫面上被黑色方塊蓋住），遮住的數字存空值。`source`：`pdf`／`html`（年報是網頁）／`missing`。
   - `report_id` 不使用：重跑 017 時報告編號會變，所以 `api_company` 用「公司＋年度」對到 `company_reports` 的年報連結。
-- view `company_unit_metrics`（020 新增）：`company_financials` 每一列加上算好的單價（推估）：
+  - `period`（021 起）：`annual`＝年報；`monthly`＝一份月報的「本月」數字（`month` 是第幾月，`report_url` 是那份月報的連結）；
+    `ytd`＝用月報算出的年度數字（12 月月報的「本年累計」或連續月份加總，`month` 是最後一個月，`note` 寫用了哪幾個月）。
+    月報資料來自 `data/company_financials_monthly.csv`，用 `021_company_financials_monthly.sql` 匯入（2026-11-26：8 家、月報 316 列、年度 22 列）。
+  - 唯一鍵（021 起）：`company_id, year, period, coalesce(month, 0)`（unique index `company_financials_key`）。
+- view `company_unit_metrics`（020 新增，021 重建）：`company_financials` 每一列（年報、月報、年度加總都有）加上算好的單價（推估）：
   售電業 `sale_price`（電業收入 ÷ 售電量）、`purchase_cost`（營業成本 ÷ 購電量）、`spread`、`expense_per_kwh`；
   發電業 `sold_total`（售予台電＋售予售電業＋直轉供，都沒有就用淨發電量）、`revenue_per_kwh`、`cost_per_kwh`；
   兩者都有 `operating_income`（營業收入和電業收入取較大的，減營業成本和營業費用）。算法見 `docs/methodology.md`「業者財務分析」。
@@ -601,7 +605,7 @@ T-REC 的三份資料由 Edge Function `trec-sync` 每月 15 日自動抓；業�
 | `api_price()` | 電價走勢頁的全部資料：`avg_unit_prices`、`unit_costs`、`adjustments`、`required` | 沒有參數（資料量很小，一次全部回傳） |
 | `api_wheeling()` | 轉供費率頁的資料：`rates`（各年各種費率）、`docs`（每年的台電公告原檔） | 沒有參數 |
 | `api_company_rankings()` | 業者排名頁：資料月份 `as_of`、年份、售電業和發電業各前 20 名、每年的 T-REC 總量 | 沒有參數 |
-| `api_company(id)` | 業者小檔案頁：基本資料和排名、逐年數字、賣出過的案場、報告、財務分析（`financials` 讀 `company_unit_metrics`，附那一年年報的 `report_url`；020 修改）。找不到（或不是售電業、發電業）回傳空值 | 一次一家 |
+| `api_company(id)` | 業者小檔案頁：基本資料和排名、逐年數字、賣出過的案場、報告、財務分析（`financials` 讀 `company_unit_metrics`，年報附那一年年報的 `report_url`、月報附那份月報的連結；020、021 修改）。找不到（或不是售電業、發電業）回傳空值 | 一次一家 |
 
 `hour` 和 `day` 粒度回傳的是那段時間內每 10 分鐘數值的平均。
 
