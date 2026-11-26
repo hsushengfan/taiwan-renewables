@@ -121,7 +121,7 @@ const CONTENT = {
     <li>業者小檔案頁的「財務分析」來自業者依電業法第 66 條公開的<b>簡明年報</b>（目前用 2020～2025 年年報，月報還沒有納入）。每個數字都附年報連結和頁碼，可以對照原檔。</li>
     <li><b>售電業：</b>售電單價 ≈ 電業收入 ÷ 售電量；購電成本 ≈ 營業成本 ÷ 購電量；價差 ＝ 兩者相減。<b>發電業：</b>每度售電收入 ≈ 電業收入 ÷ 售出電量；每度營業成本 ≈ 營業成本 ÷ 售出電量。營業利益率 ＝（營業收入 − 營業成本 − 營業費用）÷ 營業收入。</li>
     <li>「整體平均」只用算得出單價、而且沒有特殊情況的年度，各項先加總再相除（等於依電量加權）；也可以切換看各年度。</li>
-    <li>業者遮住的數字（*、x、畫面上的黑色方塊）一律當作沒有公開，不推算。電業收入每度不到 1 元的業者，可能只認列服務費，改稱「每度電業收入」、不算價差。</li>
+    <li>業者遮住的數字（*、x、畫面上的黑色方塊）一律當作沒有公開，不推算。電業收入每度不到 1 元的業者，可能只認列服務費，改稱「售電業費用」、不算價差。</li>
     <li><b>限制：</b>都是推估值。年報沒有單獨的購電成本，營業成本可能包含轉供費、憑證費等；很多業者遮住收支或年報沒有收支表，能算出單價的業者有限。</li>
   </ul>
 </section>
@@ -240,7 +240,7 @@ const CONTENT = {
     <li>The financial analysis on each company page comes from the <b>summary annual reports</b> companies publish under Article 66 of the Electricity Act (2020–2025 annual reports so far; monthly reports are not included yet). Every figure links to the report and gives the page number.</li>
     <li><b>Retailers:</b> selling price ≈ electricity revenue ÷ kWh sold; purchase cost ≈ operating cost ÷ kWh purchased; spread = the difference. <b>Generators:</b> revenue per kWh ≈ electricity revenue ÷ kWh sold; cost per kWh ≈ operating cost ÷ kWh sold. Operating margin = (revenue − cost − expenses) ÷ revenue.</li>
     <li>"Overall" uses only years with unit estimates and no special cases, adding up totals before dividing (weighted by volume); each year can also be viewed on its own.</li>
-    <li>Figures the company masked (*, x, black boxes on the page) are treated as not disclosed and are not estimated. Where electricity revenue is under NT$1 per kWh, the company probably books only a service fee, so the figure is shown as "electricity revenue per kWh" and no spread is estimated.</li>
+    <li>Figures the company masked (*, x, black boxes on the page) are treated as not disclosed and are not estimated. Where electricity revenue is under NT$1 per kWh, the company probably books only a service fee, so the figure is shown as "retailer fee" and no spread is estimated.</li>
     <li><b>Limitations:</b> these are estimates. Reports have no separate purchase cost, so operating cost may include wheeling and certificate fees; many companies mask their income figures or use a report format without one, so unit estimates are available for only some companies.</li>
   </ul>
 </section>
