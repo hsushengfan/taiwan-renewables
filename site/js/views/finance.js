@@ -19,6 +19,8 @@ import { downloadButton, cardFoot } from "../download.js";
 
 let selected = "all";        // 目前選的年度（"all"＝整體平均）
 let lastCompany = null;
+let monthlyOpen = false;     // 每月明細是否展開
+let monthlyAll = false;      // 每月明細是否顯示全部月份
 
 const n = (v) => (v == null || v === "" ? null : Number(v));
 const en = () => getLang() === "en";
@@ -74,16 +76,43 @@ const yearsText = (ys) => {
   return contiguous && ys.length > 2 ? `${ys[0]}–${ys[ys.length - 1]}` : ys.join(t("listSep"));
 };
 
+// 每一年用哪一份資料：年報算得出單價就用年報；否則用月報算出的年度數字（period = ytd），也沒有就還是列出年報的狀況
+function effectiveYears(annual, ytd) {
+  const years = [...new Set([...annual, ...ytd].map((r) => r.year))].sort((a, b) => a - b);
+  return years.map((y) => {
+    const a = annual.find((r) => r.year === y), m = ytd.find((r) => r.year === y);
+    const pickM = m && (!a || !usable(a)) && (m.status === "complete" || !a);
+    const r = pickM ? m : a;
+    const span = pickM ? spanOf(m.note) : null;
+    return { ...r, src: pickM ? "ytd" : "annual", annualRow: a || null, ytdRow: m || null, span,
+      label: span ? `${y}（${span}）` : String(y) };
+  });
+}
+// 從備註取出月份範圍，例如「2026 年 1～8 月月報加總」→「1～8 月」；全年（1～12 月、本年累計）回傳 null
+function spanOf(note) {
+  if (!note || /本年累計|1～12 月/.test(note)) return null;
+  const m = note.match(/(\d+)～(\d+) 月/) || note.match(/(\d+) 月月報/);
+  if (!m) return null;
+  if (m[2]) return en() ? `${monthEn(m[1])}–${monthEn(m[2])}` : `${m[1]}～${m[2]} 月`;
+  return en() ? monthEn(m[1]) : `${m[1]} 月`;
+}
+const monthEn = (n) => ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(n)];
+const ym = (r) => `${r.year}-${String(r.month).padStart(2, "0")}`;
+
 export function financeCard(c, d, rerender) {
   const F = t("fin");
   const role = c.role;
-  const rows = [...(d.financials || [])].sort((a, b) => a.year - b.year);
-  if (lastCompany !== c.id) { selected = "all"; lastCompany = c.id; }
+  const all = d.financials || [];
+  const annual = all.filter((r) => (r.period || "annual") === "annual").sort((a, b) => a.year - b.year);
+  const ytdRows = all.filter((r) => r.period === "ytd");
+  const monthly = all.filter((r) => r.period === "monthly").sort((a, b) => a.year - b.year || a.month - b.month);
+  const rows = effectiveYears(annual, ytdRows);
+  if (lastCompany !== c.id) { selected = "all"; lastCompany = c.id; monthlyOpen = false; monthlyAll = false; }
   const card = el("section", { className: "card fin" });
   const head = el("div", { className: "cardhead" }, [el("h2", { textContent: F.title })]);
   card.append(head);
 
-  // ---- 沒有任何年報 ----
+  // ---- 沒有任何年報、月報 ----
   if (!rows.length) {
     card.append(noData(c, d, F));
     return card;
@@ -91,14 +120,20 @@ export function financeCard(c, d, rerender) {
 
   // ---- 1. 依據的報告 ----
   const srcRow = el("div", { className: "fin-src" }, [el("span", { className: "dim", textContent: F.basedOn })]);
-  rows.forEach((r) => {
+  annual.forEach((r) => {
     const label = F.annualOf(r.year);
     const kids = [el("i", { className: `dot st-${r.status}` }), document.createTextNode(label)];
     srcRow.append(r.report_url && r.status !== "missing"
       ? el("a", { className: "chip src", href: r.report_url, target: "_blank", rel: "noopener", title: F.status[r.status] }, kids)
       : el("span", { className: "chip src off", title: F.status[r.status] }, kids));
   });
-  srcRow.append(el("span", { className: "dim small", textContent: F.monthlyNotYet }));
+  if (!annual.length) srcRow.append(el("span", { className: "dim small", textContent: F.noAnnualShort }));
+  if (monthly.length) {
+    const okM = monthly.filter((r) => r.status === "complete").length;
+    srcRow.append(el("button", { type: "button", className: "chip src", title: F.seeMonthly,
+      onclick: () => { monthlyOpen = true; rerender(); requestAnimationFrame(() => document.getElementById("fin-monthly")?.scrollIntoView({ behavior: "smooth", block: "start" })); } },
+      [el("i", { className: "dot st-complete" }), document.createTextNode(F.monthlyChip(monthly.length, ym(monthly[0]), ym(monthly[monthly.length - 1]), okM))]));
+  } else srcRow.append(el("span", { className: "dim small", textContent: F.monthlyNotYet }));
   card.append(srcRow);
 
   // 用哪幾年算整體平均
@@ -113,7 +148,7 @@ export function financeCard(c, d, rerender) {
   const keys = ["all", ...rows.map((r) => r.year)];
   if (!keys.includes(selected)) selected = "all";
   const seg = el("div", { className: "seg fin-seg", role: "group", "aria-label": F.pickYear }, keys.map((k) => {
-    const b = el("button", { type: "button", textContent: k === "all" ? F.overall : String(k), onclick: () => { selected = k; rerender(); } });
+    const b = el("button", { type: "button", textContent: k === "all" ? F.overall : rows.find((r) => r.year === k).label, onclick: () => { selected = k; rerender(); } });
     b.setAttribute("aria-pressed", String(selected === k));
     return b;
   }));
@@ -124,16 +159,20 @@ export function financeCard(c, d, rerender) {
   const banners = [];
   if (!good.length && !feeOnly) banners.push(["warn", F.noUsable(reasonSummary(rows, F))]);
   if (feeOnly || (sel && (sel.flags || []).includes("fee"))) banners.push(["warn", F.feeBanner]);
-  if (sel) {
+  if (sel && sel.src === "ytd") {
+    banners.push(["info", F.ytdBanner(sel.note || "", sel.annualRow ? F.status[sel.annualRow.status] : null)]);
+  } else if (sel) {
     if (sel.status !== "complete") banners.push(["info", `${F.annualOf(sel.year)}${t("colon")}${F.status[sel.status]}${sel.note ? t("colon") + sel.note : ""}`]);
+  }
+  if (sel) {
     (sel.flags || []).filter((f) => f !== "fee").forEach((f) => banners.push(["warn", `${F.flag[f]}${t("colon")}${sel.note || ""}`]));
   }
   banners.forEach(([kind, text]) => card.append(el("p", { className: `banner ${kind}`, textContent: text })));
 
   // ---- 3. 重點數字卡 ----
   const m = sel ? metrics([sel], role) : metrics(volRows, role);
-  const scopeText = sel ? F.annualOf(sel.year)
-    : avgRows.length ? F.avgScope(yearsText(avgRows.map((r) => r.year)), avgRows.length)
+  const scopeText = sel ? (sel.src === "ytd" ? F.fromMonthly(sel.note || "") : F.annualOf(sel.year))
+    : avgRows.length ? F.avgScope(avgRows.some((r) => r.span) ? avgRows.map((r) => r.label).join(t("listSep")) : yearsText(avgRows.map((r) => r.year)), avgRows.length)
     : volRows.length ? F.volScope(yearsText(volRows.map((r) => r.year))) : "—";
   card.append(el("p", { className: "fin-scope", textContent: scopeText }));
   const noPrice = sel ? sel.status !== "complete" : !avgRows.length;
@@ -143,7 +182,7 @@ export function financeCard(c, d, rerender) {
   card.append(tiles(m, role, F, feeOnly || (sel && (sel.flags || []).includes("fee")), sel, noPrice ? (sel ? F.status[sel.status] : whyAll) : null));
 
   // ---- 4. 圖 ----
-  const xs = rows.map((r) => r.year);
+  const xs = rows.map((r) => r.label);
   const charts = el("div", { className: "fin-charts" });
   const priceBox = el("div"), volBox = el("div");
   charts.append(
@@ -163,6 +202,9 @@ export function financeCard(c, d, rerender) {
       el("ul", {}, noted.map((r) => el("li", {}, [el("b", { textContent: `${r.year}${t("colon")}` }), document.createTextNode(r.note)]))),
     ]));
   }
+
+  // ---- 每月明細（月報）----
+  if (monthly.length) card.append(monthlySection(monthly, role, F, c, rerender));
 
   // ---- 6. 怎麼算的 ----
   card.append(el("details", { className: "collapse fin-how" }, [
@@ -256,6 +298,18 @@ function yearTable(rows, role, F, avgRows, rerender) {
   const cols = role === "retailer" ? F.colsRetail : F.colsGen;
   const srcCell = (r) => {
     const kids = [];
+    if (r.src === "ytd") {
+      kids.push(el("button", { type: "button", className: "linkish", textContent: F.fromMonthly(r.note || "") + " ↓",
+        onclick: (e) => { e.stopPropagation(); monthlyOpen = true; rerender(); requestAnimationFrame(() => document.getElementById("fin-monthly")?.scrollIntoView({ behavior: "smooth", block: "start" })); } }));
+      if (r.annualRow) {
+        const a = r.annualRow;
+        kids.push(el("div", { className: "dim small" }, [
+          a.report_url && a.status !== "missing" ? el("a", { href: a.report_url, target: "_blank", rel: "noopener", textContent: F.annualOf(a.year) + " ↗" }) : document.createTextNode(F.annualOf(a.year)),
+          document.createTextNode(t("colon") + F.status[a.status]),
+        ]));
+      }
+      return el("td", { className: "c src" }, kids);
+    }
     if (r.report_url && r.status !== "missing") kids.push(el("a", { href: r.report_url, target: "_blank", rel: "noopener", textContent: F.annualOf(r.year) + " ↗" }));
     else kids.push(document.createTextNode(F.annualOf(r.year)));
     if (r.pages) kids.push(el("div", { className: "dim small", textContent: r.pages }));
@@ -280,7 +334,7 @@ function yearTable(rows, role, F, avgRows, rerender) {
       cell(moneyText(n(r.electricity_revenue))), cell(moneyText(n(r.operating_cost))),
       cell(priceText(n(r.revenue_per_kwh))), cell(priceText(n(r.cost_per_kwh))), cell(pctText(div(n(r.operating_income), revBase(r)))),
     ];
-    const tr = el("tr", { className: selected === r.year ? "sel" : "", tabIndex: 0, title: F.rowHint }, [el("th", { className: "c", textContent: String(r.year) }), statusCell(r), ...cells, srcCell(r)]);
+    const tr = el("tr", { className: selected === r.year ? "sel" : "", tabIndex: 0, title: F.rowHint }, [el("th", { className: "c", textContent: r.label || String(r.year) }), statusCell(r), ...cells, srcCell(r)]);
     const pickRow = () => { selected = selected === r.year ? "all" : r.year; rerender(); };
     tr.onclick = (e) => { if (!e.target.closest("a")) pickRow(); };
     tr.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickRow(); } };
@@ -334,10 +388,84 @@ function csvRows(rows, role, F) {
   const label = (k) => (F.csvHead[k] || k);
   const out = [H.map(label)];
   rows.forEach((r) => {
-    const v = { ...r, status: F.status[r.status], flags: (r.flags || []).map((f) => F.flag[f]).join(t("listSep")),
+    const v = { ...r, year: r.label || r.year, note: [r.src === "ytd" ? F.fromMonthly(r.note || "") : "", r.src === "ytd" ? "" : r.note].filter(Boolean).join(t("listSep")),
+      status: F.status[r.status], flags: (r.flags || []).map((f) => F.flag[f]).join(t("listSep")),
       sale_price_per_kwh: csvNum(r.sale_price, 4), purchase_cost_per_kwh: csvNum(r.purchase_cost, 4), spread_per_kwh: csvNum(r.spread, 4),
       revenue_per_kwh: csvNum(r.revenue_per_kwh, 4), cost_per_kwh: csvNum(r.cost_per_kwh, 4) };
     out.push(H.map((k) => (v[k] == null ? "" : String(v[k]))));
   });
   return out;
+}
+
+// ---------------------------------------------------------------------
+// 每月明細（月報）：每度電單價的月度折線圖＋每月表格（每個月附月報連結）
+function monthlySection(monthly, role, F, c, rerender) {
+  const box = el("details", { className: "collapse fin-monthly", id: "fin-monthly" });
+  box.open = monthlyOpen;
+  box.addEventListener("toggle", () => { monthlyOpen = box.open; });
+  const okN = monthly.filter((r) => r.status === "complete").length;
+  box.append(el("summary", {}, [el("span", { textContent: F.monthlyTitle(monthly.length, ym(monthly[0]), ym(monthly[monthly.length - 1]), okN) })]));
+  box.append(el("p", { className: "note", textContent: F.monthlyNote }));
+
+  // 圖：只畫算得出單價的月份；有特殊情況的畫空心點
+  const chartBox = el("div");
+  const isFeeCo = monthly.some((r) => (r.flags || []).includes("fee"));
+  const pk = role === "retailer" ? ["sale_price", "purchase_cost"] : ["revenue_per_kwh", "cost_per_kwh"];
+  const usableM = (r) => r.status === "complete";
+  const hollow = new Set(monthly.map((r, i) => ((r.flags || []).some((f) => f !== "fee") ? i : -1)).filter((i) => i >= 0));
+  const series = [
+    { label: role === "retailer" ? (isFeeCo ? F.tFeeRev : F.tSale) : F.tRev, color: cssVar("--g4"), values: monthly.map((r) => (usableM(r) ? n(r[pk[0]]) : null)), hollow, format: (v) => priceText(v) },
+    ...(isFeeCo ? [] : [{ label: role === "retailer" ? F.tCost : F.tGenCost, color: cssVar("--g2"), values: monthly.map((r) => (usableM(r) ? n(r[pk[1]]) : null)), hollow, format: (v) => priceText(v) }]),
+  ];
+  box.append(el("h3", { className: "fin-mh", textContent: F.chartMonthly }), legendFor(role, F, isFeeCo), chartBox);
+
+  // 表：新的月份在上面；先顯示 24 個月
+  const sorted = [...monthly].reverse();
+  const shown = monthlyAll ? sorted : sorted.slice(0, 24);
+  const cols = role === "retailer" ? F.monthlyColsRetail : F.monthlyColsGen;
+  const cell = (v, cls = "") => el("td", { className: cls, textContent: v });
+  const body = shown.map((r) => {
+    const isFee = (r.flags || []).includes("fee");
+    const vals = role === "retailer"
+      ? [kwhText(n(r.sold_kwh)), moneyText(n(r.electricity_revenue)), moneyText(n(r.operating_cost)), priceText(n(r.sale_price)), isFee ? "—" : priceText(n(r.purchase_cost)), isFee ? "—" : priceText(n(r.spread))]
+      : [kwhText(n(r.gross_generation_kwh)), kwhText(n(r.sold_total)), moneyText(n(r.electricity_revenue)), moneyText(n(r.operating_cost)), priceText(n(r.revenue_per_kwh)), priceText(n(r.cost_per_kwh))];
+    return el("tr", {}, [
+      el("th", { className: "c", textContent: ym(r) }),
+      el("td", { className: "c" }, [el("span", { className: `pill st-${r.status}`, textContent: F.status[r.status] }),
+        ...(r.flags || []).map((f) => el("span", { className: "pill flag", textContent: F.flag[f], title: r.note || "" }))]),
+      ...vals.map((v) => cell(v)),
+      el("td", { className: "c src" }, [
+        r.report_url ? el("a", { href: r.report_url, target: "_blank", rel: "noopener", textContent: F.monthlyOf(ym(r)) + " ↗" }) : document.createTextNode(F.monthlyOf(ym(r))),
+        ...(r.pages ? [el("div", { className: "dim small", textContent: r.pages })] : []),
+        ...(r.note ? [el("div", { className: "dim small", textContent: r.note })] : []),
+      ]),
+    ]);
+  });
+  box.append(el("div", { className: "scroll fin-table" }, [el("table", {}, [
+    el("thead", {}, [el("tr", {}, cols.map((h, i) => el("th", { className: i < 2 || i === cols.length - 1 ? "c" : "", textContent: h })))]),
+    el("tbody", {}, body),
+  ])]));
+  if (sorted.length > shown.length) box.append(el("button", { type: "button", className: "chip more", textContent: F.monthlyMore(sorted.length), onclick: () => { monthlyAll = true; monthlyOpen = true; rerender(); } }));
+  const H = role === "retailer"
+    ? ["month", "status", "flags", "sold_kwh", "purchased_kwh", "operating_revenue", "electricity_revenue", "operating_cost", "operating_expense", "sale_price_per_kwh", "purchase_cost_per_kwh", "spread_per_kwh", "report_url", "pages", "note"]
+    : ["month", "status", "flags", "gross_generation_kwh", "sold_to_taipower_kwh", "sold_to_retailers_kwh", "sold_to_users_kwh", "operating_revenue", "electricity_revenue", "operating_cost", "operating_expense", "revenue_per_kwh", "cost_per_kwh", "report_url", "pages", "note"];
+  box.append(cardFoot([], "", downloadButton(`taiwan-renewable-company-${c.id}-finance-monthly.csv`, () => [
+    H.map((k) => (k === "month" ? F.csvMonth : F.csvHead[k] || k)),
+    ...monthly.map((r) => {
+      const v = { ...r, month: ym(r), status: F.status[r.status], flags: (r.flags || []).map((f) => F.flag[f]).join(t("listSep")),
+        sale_price_per_kwh: csvNum(r.sale_price, 4), purchase_cost_per_kwh: csvNum(r.purchase_cost, 4), spread_per_kwh: csvNum(r.spread, 4),
+        revenue_per_kwh: csvNum(r.revenue_per_kwh, 4), cost_per_kwh: csvNum(r.cost_per_kwh, 4) };
+      return H.map((k) => (v[k] == null ? "" : String(v[k])));
+    }),
+  ])));
+  // 圖要等展開後才畫得出寬度
+  const draw = () => {
+    if (!box.open || chartBox.childElementCount) return;
+    if (series.some((sr) => sr.values.some((v) => v != null))) {
+      lineChart(chartBox, { xs: monthly.map(ym), series, label: F.chartMonthly, dates: monthly.map((r) => `${ym(r)}-15`) });
+    } else chartBox.append(el("p", { className: "dim empty", textContent: F.noChart }));
+  };
+  box.addEventListener("toggle", () => requestAnimationFrame(draw));
+  requestAnimationFrame(draw);
+  return box;
 }

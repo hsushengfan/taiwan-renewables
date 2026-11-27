@@ -151,7 +151,9 @@ drop table tmp_fin;
 --           每度售電收入 ≈ 電業收入 ÷ 售出電量；每度營業成本 ≈ 營業成本 ÷ 售出電量
 --   flags：fee＝電業收入每度不到 1 元，可能只認列服務費，不能當售電單價；cost_other＝營業成本不只購電；
 --          mismatch＝報告裡的數字對不起來。網站會提醒，整體平均不採用這一年。
-create or replace view company_unit_metrics as
+-- 先刪再建：021 之後表格多了欄位，直接 replace 會失敗（重跑 020 之後要再跑 021）
+drop view if exists company_unit_metrics;
+create view company_unit_metrics as
 select f.*,
        c.role,
        round(f.electricity_revenue / nullif(f.sold_kwh, 0), 4)        as sale_price,
