@@ -521,7 +521,7 @@ T-REC 的三份資料由 Edge Function `trec-sync` 每月 15 日自動抓；業�
 
 - `company_reports`：一份年報或月報的連結（`report_type` 是 `annual`／`monthly`，
   `status` 是 `found`（找到）／`page_only`（只找到列表頁）／`not_found`（找不到）／`broken`（連結失效）。
-  資料來自 `data/company_reports.csv`，用 `017_company_reports.sql` 匯入（2026-11-23：40 家、1573 列）。
+  資料來自 `data/company_reports.csv`，用 `017_company_reports.sql` 匯入（2026-11-27：40 家、1577 列）。
   - `year`、`month` 都是空值的列代表**整家公司**（例如整家都找不到），不是某一份報告；`note` 寫原因。
     （`019_report_status_broken.sql` 起 `year` 可以是空值，以前用 2025 年當佔位。）
   - 有年份的 `not_found` 是**某一份報告**找不到，例如官網放錯檔案、連結要登入；`url` 是空的，`note` 寫原因。
@@ -539,7 +539,7 @@ T-REC 的三份資料由 Edge Function `trec-sync` 每月 15 日自動抓；業�
   - `report_id` 不使用：重跑 017 時報告編號會變，所以 `api_company` 用「公司＋年度」對到 `company_reports` 的年報連結。
   - `period`（021 起）：`annual`＝年報；`monthly`＝一份月報的「本月」數字（`month` 是第幾月，`report_url` 是那份月報的連結）；
     `ytd`＝用月報算出的年度數字（12 月月報的「本年累計」或連續月份加總，`month` 是最後一個月，`note` 寫用了哪幾個月）。
-    月報資料來自 `data/company_financials_monthly.csv`，用 `021_company_financials_monthly.sql` 匯入（2026-11-26：8 家、月報 316 列、年度 22 列）。
+    月報資料來自 `data/company_financials_monthly.csv`，用 `021_company_financials_monthly.sql` 匯入（2026-11-27：30 家、月報 513 列、年度 45 列）。
   - 唯一鍵（021 起）：`company_id, year, period, coalesce(month, 0)`（unique index `company_financials_key`）。
 - view `company_unit_metrics`（020 新增，021 重建）：`company_financials` 每一列（年報、月報、年度加總都有）加上算好的單價（推估）：
   售電業 `sale_price`（電業收入 ÷ 售電量）、`purchase_cost`（營業成本 ÷ 購電量）、`spread`、`expense_per_kwh`；
