@@ -2,7 +2,7 @@
 -- 017：匯入業者的年報、月報位置（業者排名第 2 階段，規格見 docs/specs/companies.md 第 5 節）
 --
 -- 為什麼：業者小檔案頁要列出每家依電業法第 66 條公開的簡明年報、月報，方便連回原檔。
--- 做了什麼：把 data/company_reports.csv 的 1573 列匯入 company_reports。
+-- 做了什麼：把 data/company_reports.csv 的 1577 列匯入 company_reports。
 --   - 年報從 2020 年起；月報從 2020-01 到 2026-10（使用者 2026-11-23 決定從 2020 年開始收）。只存連結，不存 PDF。
 --   - status：found 找到個別報告｜page_only 只找到列表頁（month 是空的，代表整個頁面）｜not_found 找不到（note 寫原因）
 --             ｜broken 連結失效（網址留著做紀錄，網站上不放連結；019 新增）
@@ -952,7 +952,7 @@ insert into tmp_reports values
   ('中威風力發電股份有限公司', 'annual', 2024, null, 'https://www.wpd.tw/wp-content/uploads/2025/07/%E4%B8%AD%E5%A8%81113%E5%B9%B4%E5%B9%B4%E5%A0%B1.pdf', 'found', '2026-11-23', null),
   ('大同智能股份有限公司', 'annual', 2024, null, 'https://www.tatungforeverenergy.com/Image/Download?cate=CompanyDoc&fname=2024%E5%B9%B4-%E5%A4%A7%E5%90%8C%E6%99%BA%E8%83%BD%E5%94%AE%E9%9B%BB%E6%A5%AD%E5%B9%B4%E5%A0%B1-%E4%B8%8A%E5%82%B3.pdf', 'found', '2026-11-23', null),
   ('大同智能股份有限公司', 'annual', 2025, null, 'https://www.tatungforeverenergy.com/Image/Download?cate=CompanyDoc&fname=%E9%A0%90%E8%A8%882025%E5%B9%B4%E5%A4%A7%E5%90%8C%E6%99%BA%E8%83%BD%E5%94%AE%E9%9B%BB%E6%A5%AD%E5%B9%B4%E5%A0%B1-%E5%85%AC%E9%96%8B.pdf', 'found', '2026-11-23', '檔名寫「預計」'),
-  ('台汽電綠能股份有限公司', 'monthly', 2026, 7, 'https://www.tccgreenenergy.com.tw/Laws/More?id=2318', 'found', '2026-11-23', '連到這份報告的頁面，PDF 在頁面裡'),
+  ('台汽電綠能股份有限公司', 'monthly', 2026, 7, 'https://www.tccgreenenergy.com.tw/Laws/More?id=2318', 'broken', '2026-11-23', '連結失效：報告頁上的 PDF 下載連結打不開（404，讀 2026 月報時發現，2026-11-27）'),
   ('台汽電綠能股份有限公司', 'monthly', 2026, 6, 'https://www.tccgreenenergy.com.tw/Laws/More?id=2316', 'found', '2026-11-23', '連到這份報告的頁面，PDF 在頁面裡'),
   ('台汽電綠能股份有限公司', 'monthly', 2026, 5, 'https://www.tccgreenenergy.com.tw/Laws/More?id=2314', 'found', '2026-11-23', '連到這份報告的頁面，PDF 在頁面裡'),
   ('台汽電綠能股份有限公司', 'monthly', 2026, 4, 'https://www.tccgreenenergy.com.tw/Laws/More?id=2312', 'found', '2026-11-23', '連到這份報告的頁面，PDF 在頁面裡'),
@@ -1148,6 +1148,8 @@ insert into tmp_reports values
   ('天衝能源股份有限公司', 'monthly', 2025, 3, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3052', 'found', '2026-11-23', '到列表頁按「2025年」，再點「2025年03月月報」（網站的檔案連結過一段時間就會失效，所以存列表頁）'),
   ('天衝能源股份有限公司', 'monthly', 2025, 2, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3052', 'found', '2026-11-23', '到列表頁按「2025年」，再點「2025年02月月報」（網站的檔案連結過一段時間就會失效，所以存列表頁）'),
   ('天衝能源股份有限公司', 'monthly', 2025, 1, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3052', 'found', '2026-11-23', '到列表頁按「2025年」，再點「2025年01月月報」（網站的檔案連結過一段時間就會失效，所以存列表頁）'),
+  ('天衝能源股份有限公司', 'monthly', 2026, 10, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3052', 'found', '2026-11-23', '到列表頁按「2026年」，再點「2026年10月月報」（網站的檔案連結過一段時間就會失效，所以存列表頁）'),
+  ('天衝能源股份有限公司', 'monthly', 2026, 9, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3052', 'found', '2026-11-23', '到列表頁按「2026年」，再點「2026年09月月報」（網站的檔案連結過一段時間就會失效，所以存列表頁）'),
   ('天衝能源股份有限公司', 'monthly', 2026, 8, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3052', 'found', '2026-11-23', '到列表頁按「2026年」，再點「2026年08月月報」（網站的檔案連結過一段時間就會失效，所以存列表頁）'),
   ('天衝能源股份有限公司', 'monthly', 2026, 7, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3052', 'found', '2026-11-23', '到列表頁按「2026年」，再點「2026年07月月報」（網站的檔案連結過一段時間就會失效，所以存列表頁）'),
   ('天衝能源股份有限公司', 'monthly', 2026, 6, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3052', 'found', '2026-11-23', '到列表頁按「2026年」，再點「2026年06月月報」（網站的檔案連結過一段時間就會失效，所以存列表頁）'),
@@ -1203,6 +1205,8 @@ insert into tmp_reports values
   ('天篷能源股份有限公司', 'monthly', 2025, 3, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3053', 'found', '2026-11-23', '到列表頁按「2025年」，再點「2025年03月月報」（網站的檔案連結過一段時間就會失效，所以存列表頁）'),
   ('天篷能源股份有限公司', 'monthly', 2025, 2, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3053', 'found', '2026-11-23', '到列表頁按「2025年」，再點「2025年02月月報」（網站的檔案連結過一段時間就會失效，所以存列表頁）'),
   ('天篷能源股份有限公司', 'monthly', 2025, 1, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3053', 'found', '2026-11-23', '到列表頁按「2025年」，再點「2025年01月月報」（網站的檔案連結過一段時間就會失效，所以存列表頁）'),
+  ('天篷能源股份有限公司', 'monthly', 2026, 10, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3053', 'found', '2026-11-23', '到列表頁按「2026年」，再點「2026年10月月報」（網站的檔案連結過一段時間就會失效，所以存列表頁）'),
+  ('天篷能源股份有限公司', 'monthly', 2026, 9, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3053', 'found', '2026-11-23', '到列表頁按「2026年」，再點「2026年09月月報」（網站的檔案連結過一段時間就會失效，所以存列表頁）'),
   ('天篷能源股份有限公司', 'monthly', 2026, 8, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3053', 'found', '2026-11-23', '到列表頁按「2026年」，再點「2026年08月月報」（網站的檔案連結過一段時間就會失效，所以存列表頁）'),
   ('天篷能源股份有限公司', 'monthly', 2026, 7, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3053', 'found', '2026-11-23', '到列表頁按「2026年」，再點「2026年07月月報」（網站的檔案連結過一段時間就會失效，所以存列表頁）'),
   ('天篷能源股份有限公司', 'monthly', 2026, 6, 'https://chweb.chem.com.tw/Enterprise/_layout/Forms/ElecReport/ElecReportYear.aspx?muNodeID=2292&comp=3053', 'found', '2026-11-23', '到列表頁按「2026年」，再點「2026年06月月報」（網站的檔案連結過一段時間就會失效，所以存列表頁）'),
@@ -1607,7 +1611,7 @@ select c.id, t.report_type, t.year, t.month, nullif(t.url, ''), t.status, t.chec
 
 drop table tmp_reports;
 
--- 檢查：應該是 1573 列、40 家
+-- 檢查：應該是 1577 列、40 家
 select count(*) as 報告列數, count(distinct company_id) as 公司數,
        count(*) filter (where status = 'found') as 找到,
        count(*) filter (where status = 'page_only') as 只有頁面,

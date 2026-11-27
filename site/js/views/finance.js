@@ -173,7 +173,7 @@ export function financeCard(c, d, rerender) {
   const m = sel ? metrics([sel], role) : metrics(volRows, role);
   const scopeText = sel ? (sel.src === "ytd" ? F.fromMonthly(sel.note || "") : F.annualOf(sel.year))
     : avgRows.length ? F.avgScope(avgRows.some((r) => r.span) ? avgRows.map((r) => r.label).join(t("listSep")) : yearsText(avgRows.map((r) => r.year)), avgRows.length)
-    : volRows.length ? F.volScope(yearsText(volRows.map((r) => r.year))) : "—";
+    : volRows.length ? F.volScope(volRows.some((r) => r.span) ? volRows.map((r) => r.label).join(t("listSep")) : yearsText(volRows.map((r) => r.year))) : "—";
   card.append(el("p", { className: "fin-scope", textContent: scopeText }));
   const noPrice = sel ? sel.status !== "complete" : !avgRows.length;
   // 沒有單價的原因：全部遮蔽／全部沒附收支表時寫得具體一點
@@ -240,7 +240,7 @@ function tiles(m, role, F, isFee, sel, noPrice) {
     tile(F.tMargin, pctText(m.opMargin), m.opMargin == null && noPrice ? noPrice : F.fMargin, m.opMargin != null ? (m.opMargin >= 0 ? "pos" : "neg") : "");
   } else {
     tile(sel ? F.tGen : F.tGen + F.sumSuffix, kwhText(m.G), F.fSoldTotal(kwhText(m.T)));
-    tile(F.tCf, m.cf == null ? "—" : `${fmt(m.cf, 1)}%`, sel ? F.fCfYear : F.fCfAvg);
+    tile(F.tCf, m.cf == null ? "—" : `${fmt(m.cf, 1)}%`, m.cf == null ? F.noCf : sel ? F.fCfYear : F.fCfAvg);
     tile(F.tRev, priceText(m.rev), noPrice && m.rev == null ? noPrice : F.fDiv(moneyText(m.ER), F.wElecRev, kwhText(m.T), F.wSoldTotal));
     tile(F.tGenCost, priceText(m.cost), noPrice && m.cost == null ? noPrice : F.fDiv(moneyText(m.OC), F.wCost, kwhText(m.T), F.wSoldTotal));
     tile(F.tMargin, pctText(m.opMargin), m.opMargin == null && noPrice ? noPrice : F.fMargin, m.opMargin != null ? (m.opMargin >= 0 ? "pos" : "neg") : "");
