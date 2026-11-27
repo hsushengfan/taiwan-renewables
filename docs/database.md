@@ -47,6 +47,7 @@
 | [`trec_staging`](#trec_sync_runs與-trec_staging) | 資料表 | 自動抓取時的暫存區（平常是空的） | 系統暫存 |
 | [`company_reports`](#company_reports與-company_financials) | 資料表 | 一份業者的年報或月報（連結） | **人工整理的原始資料**（第 2 階段） |
 | [`company_financials`](#company_reports與-company_financials) | 資料表 | 一家業者一年的財務數字 | **人工整理的原始資料**（第 3 階段） |
+| [`company_public_filings`](#company_public_filings上市櫃公開資訊) | 資料表 | 一家業者一年的財報數字（業者自己或母公司的官方文件） | **人工整理的原始資料**（022） |
 | [`company_rankings`](#view-company_rankings與-trec_unknown_sellers) | view | 售電業、發電業各自依累計直轉供移轉量排名 | **算出來的** |
 | [`trec_unknown_sellers`](#view-company_rankings與-trec_unknown_sellers) | view | T-REC 上有、但業者名單沒有的公司 | **算出來的** |
 | [`company_unit_metrics`](#company_reports與-company_financials) | view | `company_financials` 加上每度電的單價（推估） | **算出來的** |
@@ -546,6 +547,23 @@ T-REC 的三份資料由 Edge Function `trec-sync` 每月 15 日自動抓；業�
   發電業 `sold_total`（售予台電＋售予售電業＋直轉供，都沒有就用淨發電量）、`revenue_per_kwh`、`cost_per_kwh`；
   兩者都有 `operating_income`（營業收入和電業收入取較大的，減營業成本和營業費用）。算法見 `docs/methodology.md`「業者財務分析」。
 
+#### `company_public_filings`：上市櫃公開資訊
+
+業者本身、或它的母公司是上市櫃（含興櫃）公司時，從**官方財務報告或股東會年報**抄下的數字。一家公司一年一列（主鍵 `company_id, year`）。
+資料來自 `data/company_public_filings.csv`，用 `022_company_public_filings.sql` 匯入（2026-11-27：17 家、72 列，有數字的 61 列）。來源規則見 `docs/company-public-filings.md`。
+
+| 欄位 | 意思 |
+|---|---|
+| `source_type` | `own_fs` 自己的財務報告／`own_ar` 自己的股東會年報／`parent_ar` 母公司年報的關係企業表（沒有營業成本） |
+| `source_company`、`source_doc`、`source_url` | 文件是哪家公司的（含股票代號）、文件名稱和頁碼、網址 |
+| `unit_original` | 文件上寫的單位（千元、仟元、元；「（未標示）」＝那一頁沒寫，依前後年度推定為千元） |
+| `operating_revenue`、`operating_cost`、`operating_expense`、`operating_income`、`net_income` | 營業收入、營業成本、營業費用、營業利益、本期淨利，**一律換成元**（負數是虧損）。文件寫「-」記為 0 |
+| `status` | `ok` 有數字／`not_disclosed` 沒有公開／`not_found` 文件裡找不到／`not_listed` 母公司表裡沒有列出 |
+| `scope_ok` | `false`：財報營業收入包含很多售電以外的業務（大同智能、能元超商、中鋼光能），網站不算每度電 |
+| `check_note` | 和簡明年報或月報全年數字對帳的結果（例如「和簡明年報的營業收入相符」）；`scope_ok = false` 的是原因 |
+
+RLS 開著、沒有 policy，只能透過 `api_company` 讀。
+
 #### view `company_rankings` 與 `trec_unknown_sellers`
 
 - `company_rankings`：`companies` 裡分類是售電業、發電業的公司，各自依**出售單位的累計直轉供移轉量**排名（`rank`）。
@@ -605,7 +623,7 @@ T-REC 的三份資料由 Edge Function `trec-sync` 每月 15 日自動抓；業�
 | `api_price()` | 電價走勢頁的全部資料：`avg_unit_prices`、`unit_costs`、`adjustments`、`required` | 沒有參數（資料量很小，一次全部回傳） |
 | `api_wheeling()` | 轉供費率頁的資料：`rates`（各年各種費率）、`docs`（每年的台電公告原檔） | 沒有參數 |
 | `api_company_rankings()` | 業者排名頁：資料月份 `as_of`、年份、售電業和發電業各前 20 名、每年的 T-REC 總量 | 沒有參數 |
-| `api_company(id)` | 業者小檔案頁：基本資料和排名、逐年數字、賣出過的案場、報告、財務分析（`financials` 讀 `company_unit_metrics`，年報附那一年年報的 `report_url`、月報附那份月報的連結；020、021 修改）。找不到（或不是售電業、發電業）回傳空值 | 一次一家 |
+| `api_company(id)` | 業者小檔案頁：基本資料和排名、逐年數字、賣出過的案場、報告、財務分析（`financials` 讀 `company_unit_metrics`，年報附那一年年報的 `report_url`、月報附那份月報的連結；020、021 修改）、上市櫃公開資訊（`filings` 讀 `company_public_filings`；022 加的）。找不到（或不是售電業、發電業）回傳空值 | 一次一家 |
 
 `hour` 和 `day` 粒度回傳的是那段時間內每 10 分鐘數值的平均。
 

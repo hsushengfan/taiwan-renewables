@@ -326,6 +326,8 @@ GitHub Actions 的備援已停用自動排程（從來沒有成功收到過資�
 7. **財務分析**（第 3 階段）：執行 `supabase/migrations/020_company_financials.sql`，最後應該看到售電業 55 份年報（算得出單價 26、遮蔽 9、讀不到 2）、發電業 39 份（算得出單價 28、讀不到 1）。
 8. **財務分析：月報**：執行 `supabase/migrations/021_company_financials_monthly.sql`，最後應該看到 annual 94 列、monthly 513 列（30 家）、ytd 45 列。
    （重跑 020 之後要再跑 021：020 會重建 view，021 才會加上月報的欄位和連結。）
+9. **財務分析：上市櫃公開資訊**：執行 `supabase/migrations/022_company_public_filings.sql`，最後應該看到 72 列、17 家、有數字 61 列、範圍不同 12 列。
+   （重跑 021 之後要再跑 022：021 會重寫 `api_company`，022 才會加上 `filings`。）
 
 **收到信怎麼辦：**
 

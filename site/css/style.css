@@ -214,3 +214,10 @@ td.sortcol{font-weight:600}
 .fin .linkish{border:0;background:none;padding:0;font:inherit;color:var(--g4);cursor:pointer;text-align:left}
 .fin-monthly .fin-mh{font-size:14px;font-weight:600;margin:12px 0 6px}
 .fin-monthly summary span{font-weight:600}
+.fin-pub{margin-top:20px;padding-top:14px;border-top:1px solid var(--grid)}
+.fin-pub h3{font-size:15px;font-weight:600;margin:0 0 6px}
+.fin-pub .fin-table td.neg{color:var(--g0)}
+.fin-pub .fin-table tr.off td,.fin-pub .fin-table tr.off th{color:var(--muted,inherit);opacity:.8}
+.fin-pub .fin-table td.src{min-width:220px;text-align:left}
+.fin-pub .fin-table .why{white-space:normal;max-width:200px;margin-left:auto;line-height:1.4}
+.fin-pub .fin-table tbody tr{cursor:default}

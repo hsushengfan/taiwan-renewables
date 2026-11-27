@@ -9,6 +9,7 @@
 //     5. 逐年明細表：原始數字、單價、狀態、來源（年報＋頁碼）；點某一年＝切換到那一年
 //     6. 怎麼算的（可以展開）＋ CSV 下載
 //   沒有資料的業者：寫出每一年為什麼沒有（遮蔽、沒附收支表、讀不到、沒有年報）。
+//   7. 上市櫃公開資訊：業者自己或母公司的財報數字（api_company 的 filings，022），和電業報告分開列
 //
 // 整體平均：只用「算得出單價、而且沒有特殊情況（flags）」的年度，各項先加總再相除（等於依電量加權）。
 
@@ -115,6 +116,7 @@ export function financeCard(c, d, rerender) {
   // ---- 沒有任何年報、月報 ----
   if (!rows.length) {
     card.append(noData(c, d, F));
+    if ((d.filings || []).length) card.append(publicSection(d.filings, all, role, F, c));
     return card;
   }
 
@@ -205,6 +207,9 @@ export function financeCard(c, d, rerender) {
 
   // ---- 每月明細（月報）----
   if (monthly.length) card.append(monthlySection(monthly, role, F, c, rerender));
+
+  // ---- 上市櫃公開資訊（財報）----
+  if ((d.filings || []).length) card.append(publicSection(d.filings, all, role, F, c));
 
   // ---- 6. 怎麼算的 ----
   card.append(el("details", { className: "collapse fin-how" }, [
@@ -467,5 +472,117 @@ function monthlySection(monthly, role, F, c, rerender) {
   };
   box.addEventListener("toggle", () => requestAnimationFrame(draw));
   requestAnimationFrame(draw);
+  return box;
+}
+
+// ---------------------------------------------------------------------
+// 上市櫃公開資訊：業者自己的財務報告，或母公司年報「關係企業」表上的數字
+//   每度營業收入＝財報營業收入 ÷ 電業報告的售電量；每度營業成本＝財報營業成本 ÷ 購電量（發電業都用售出電量）
+//   度數只用全年的（年報，或 12 月月報的本年累計）；財報範圍和電業差很多的業者（scope_ok = false）不算每度電
+function kwhFor(all, year, role) {
+  const a = all.find((r) => (r.period || "annual") === "annual" && r.year === year);
+  const m = all.find((r) => r.period === "ytd" && r.year === year && !spanOf(r.note));
+  for (const [r, src] of [[a, t("fin").annualOf(year)], [m, t("fin").monthlyOf(`${year}`)]]) {
+    if (!r) continue;
+    const sold = n(role === "retailer" ? r.sold_kwh : r.sold_total), bought = n(role === "retailer" ? r.purchased_kwh : r.sold_total);
+    if (sold) return { sold, bought, src };
+  }
+  return null;
+}
+// 對照用：電業報告自己的「每度電業收入」（同一年優先，沒有就用最接近的年度；年報或月報都可以）
+function refPrice(all, year, role) {
+  const c = all.filter((r) => r.period !== "monthly" && r.status === "complete")
+    .map((r) => ({ y: r.year, v: div(n(r.electricity_revenue), n(role === "retailer" ? r.sold_kwh : r.sold_total)) }))
+    .filter((x) => x.v != null && x.v > 0)
+    .sort((a, b) => Math.abs(a.y - year) - Math.abs(b.y - year));
+  return c[0] || null;
+}
+const PUB_TOL = 0.3;         // 和電業報告的每度電業收入差超過 30%：財報可能含其他業務，不算每度電
+const PUB_RANGE = [1, 15];   // 沒有電業報告可以對照時：每度超出 1～15 元就不算（不合理）
+
+function publicSection(filings, all, role, F, c) {
+  const box = el("div", { className: "fin-pub" });
+  box.append(el("h3", { textContent: F.pubTitle }));
+  const fs = [...filings].sort((a, b) => a.year - b.year);
+  const scopeOk = fs.every((r) => r.scope_ok !== false);
+  const types = [...new Set(fs.filter((r) => r.status === "ok").map((r) => r.source_type))];
+  const corp = [...new Set(fs.map((r) => r.source_company).filter(Boolean))];
+  box.append(el("p", { className: "note", textContent: F.pubIntro }));
+  box.append(el("p", { className: "fin-scope", textContent: `${types.map((x) => F.pubSrcType[x]).join(t("listSep"))}${t("colon")}${corp.join(t("listSep"))}` }));
+  // 範圍不同：用資料裡寫的具體原因（中文），英文版用通用說明
+  const scopeWhy = fs.find((r) => r.scope_ok === false && r.check_note)?.check_note;
+  if (!scopeOk) box.append(el("p", { className: "banner warn", textContent: `${F.pubScope}${scopeWhy && !en() ? t("colon") + scopeWhy : ""}` }));
+  if (types.includes("parent_ar")) box.append(el("p", { className: "dim small", textContent: F.pubIntroParent }));
+
+  // 每一年的數字＋每度電
+  // 只認列服務費的業者（簡明年報 flags 有 fee）：每度營業收入其實是「每度售電業費用」
+  const isFee = all.some((r) => (r.flags || []).includes("fee"));
+  const calc = fs.map((r) => {
+    const ok = r.status === "ok";
+    const rev = n(r.operating_revenue), cost = n(r.operating_cost), opi = n(r.operating_income);
+    let k = ok && r.scope_ok !== false && rev ? kwhFor(all, r.year, role) : null;
+    let why = null;
+    if (k) {
+      const v = rev / k.sold, ref = refPrice(all, r.year, role);
+      if (ref && Math.abs(v / ref.v - 1) > PUB_TOL) why = F.pubOffRef(fmt(v, 2), ref.y, fmt(ref.v, 2));
+      else if (!ref && !isFee && (v < PUB_RANGE[0] || v > PUB_RANGE[1])) why = F.pubOffRange(fmt(v, 2));
+      if (why) k = null;
+    }
+    return { r, ok, rev, cost, opi, margin: ok && rev ? div(opi, rev) : null, k, why,
+      revKwh: k ? div(rev, k.sold) : null, costKwh: k && cost != null && !isFee ? div(cost, k.bought) : null };
+  });
+  if (isFee && scopeOk) box.append(el("p", { className: "banner warn", textContent: F.pubFee }));
+  const cell = (v, cls = "") => el("td", { className: cls, textContent: v });
+  const body = calc.map(({ r, ok, rev, cost, opi, margin, k, why, revKwh, costKwh }) => {
+    const src = el("td", { className: "c src" }, [
+      r.source_url ? el("a", { href: r.source_url, target: "_blank", rel: "noopener", textContent: (r.source_doc || F.pubSeeDoc) + " ↗" }) : document.createTextNode(r.source_doc || "—"),
+      el("div", { className: "dim small", textContent: `${F.pubSrcType[r.source_type]}${r.source_company ? "：" + r.source_company : ""}` }),
+      ...(r.note ? [el("div", { className: "dim small", textContent: r.note })] : []),
+    ]);
+    if (!ok) {
+      return el("tr", { className: "off" }, [el("th", { className: "c", textContent: r.year }),
+        el("td", { colSpan: 7, className: "c" }, [el("span", { className: "pill st-missing", textContent: F.pubStatus[r.status] || r.status })]), src]);
+    }
+    return el("tr", {}, [
+      el("th", { className: "c", textContent: r.year }),
+      cell(moneyText(rev)), cell(moneyText(cost)), cell(moneyText(opi), opi < 0 ? "neg" : ""), cell(pctText(margin)),
+      el("td", {}, [document.createTextNode(priceText(revKwh)), ...(k ? [el("div", { className: "dim small", textContent: F.pubKwhFrom(k.src) })] : []),
+        ...(why ? [el("div", { className: "dim small why", textContent: F.pubOffShort, title: why })] : [])]),
+      cell(priceText(costKwh)),
+      el("td", { className: "c" }, r.scope_ok === false ? [el("span", { className: "pill flag", textContent: F.pubScopeShort, title: r.check_note || "" })]
+        : r.check_note ? [el("span", { className: `pill ${/相符/.test(r.check_note) ? "st-complete" : "flag"}`, textContent: r.check_note })] : [document.createTextNode("—")]),
+      src,
+    ]);
+  });
+  // 合計：有度數的年度，各項加總再相除
+  const withK = calc.filter((x) => x.revKwh != null);
+  const foot = [];
+  if (withK.length > 1) {
+    const S = withK.reduce((s, x) => s + x.k.sold, 0), R = withK.reduce((s, x) => s + x.rev, 0);
+    const wc = withK.filter((x) => x.costKwh != null);
+    const C = wc.length ? wc.reduce((s, x) => s + x.cost, 0) / wc.reduce((s, x) => s + x.k.bought, 0) : null;
+    foot.push(el("tr", { className: "avg" }, [el("th", { className: "c", textContent: F.pubTotal(yearsText(withK.map((x) => x.r.year))) }),
+      cell(moneyText(R)), cell(wc.length ? moneyText(wc.reduce((s, x) => s + x.cost, 0)) : "—"), cell("—"), cell("—"), cell(priceText(R / S)), cell(priceText(C)), cell(""), cell("")]));
+  }
+  box.append(el("div", { className: "scroll fin-table" }, [el("table", {}, [
+    el("thead", {}, [el("tr", {}, F.pubCols.map((h, i) => el("th", { className: i === 0 || i >= 7 ? "c" : "", textContent: i === 5 && isFee ? F.pubFeeCol : h })))]),
+    el("tbody", {}, body), ...(foot.length ? [el("tfoot", {}, foot)] : []),
+  ])]));
+  // 沒有採用每度電的年度：表格裡只寫短的，完整原因列在表格下面
+  const offs = calc.filter((x) => x.why);
+  if (offs.length) box.append(el("ul", { className: "fin-why small" }, offs.map((x) => el("li", {}, [el("b", { textContent: `${x.r.year}${t("colon")}` }), document.createTextNode(x.why)]))));
+  box.append(el("p", { className: "note", textContent: `${scopeOk ? F.pubPerKwhNote + " " : ""}${F.pubUnitNote}` }));
+
+  const H = ["year", "status", "source_type", "source_company", "source_doc", "source_url", "unit_original", "operating_revenue", "operating_cost", "operating_expense",
+    "operating_income", "net_income", "op_margin", "kwh", "rev_per_kwh", "cost_kwh", "cost_per_kwh", "check_note", "note"];
+  box.append(cardFoot([], "",
+    downloadButton(`taiwan-renewable-company-${c.id}-public-filings.csv`, () => [
+      H.map((k) => F.csvPub[k] || k),
+      ...calc.map(({ r, margin, k, why, revKwh, costKwh }) => {
+        const v = { ...r, status: r.status === "ok" ? "ok" : F.pubStatus[r.status], source_type: F.pubSrcType[r.source_type], note: [r.note, why].filter(Boolean).join(t("listSep")),
+          op_margin: csvNum(margin, 4), kwh: k ? k.sold : "", rev_per_kwh: csvNum(revKwh, 4), cost_kwh: k && costKwh != null ? k.bought : "", cost_per_kwh: csvNum(costKwh, 4) };
+        return H.map((x) => (v[x] == null ? "" : String(v[x])));
+      }),
+    ])));
   return box;
 }
